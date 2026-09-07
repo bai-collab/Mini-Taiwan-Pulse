@@ -4,6 +4,7 @@ import type { Map as MapboxMap } from "mapbox-gl";
 import type { ViewMode, RenderMode, DisplayMode, Flight, ExpandableLayerKey, LayerVisibility, AppMode, FeatureInfo } from "./types";
 import type { StationPillarData } from "./three/StationPillarScene";
 import { MapView } from "./map/MapView";
+import { createMapInstanceEvents } from "./map/mapInstanceEvents";
 import { useAirspaceData } from "./hooks/useAirspaceData";
 import { useShipData } from "./hooks/useShipData";
 import { useRailData } from "./hooks/useRailData";
@@ -94,6 +95,7 @@ import { LegendPanel } from "./components/LegendPanel";
 import { LoadingIndicator } from "./components/LoadingIndicator";
 import { LoadingScreen } from "./components/LoadingScreen";
 import { TransientNotice, showTransientNotice } from "./components/TransientNotice";
+import { CameraHud, createCameraHudStore } from "./components/CameraHud";
 import { MemberPanel } from "./components/member/MemberPanel";
 import { memberLibraryStore, useMemberLibrary } from "./state/memberLibraryStore";
 import { LAYER_SEARCH_INDEX } from "./lib/layerSearch";
@@ -380,7 +382,6 @@ export default function App() {
   const [chatOpen, setChatOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(56); // rail only by default
   const handleSidebarWidthChange = useCallback((w: number) => setSidebarWidth(w), []);
-  const [cameraInfo, setCameraInfo] = useState({ lng: 0, lat: 0, zoom: 0, pitch: 0, bearing: 0 });
 
   // 從 Registry 計算整體資料範圍（供日期導航參考）
   const dataTimeRange = useMemo(() => {
@@ -954,13 +955,17 @@ export default function App() {
   // 地圖首次渲染完成（idle 或 4s 保底）才允許 LoadingScreen 收掉，
   // 避免「資料 RPC 完成但場景還沒畫出來」的空窗 — state 宣告已上移至 waste lazy setup 前
 
+  const [mapInstanceEvents] = useState(createMapInstanceEvents);
+  const [cameraHud] = useState(createCameraHudStore);
+  useEffect(() => () => {
+    mapInstanceEvents.dispose();
+    cameraHud.dispose();
+  }, [mapInstanceEvents, cameraHud]);
+
   const handleMapReady = (map: MapboxMap) => {
     mapRef.current = map;
+    cameraHud.bind(map);
     addAllLayers(map);
-    map.once("idle", () => setMapPrepared(true));
-    setTimeout(() => setMapPrepared(true), 4000);
-    sessionTracker.init("mini-taiwan-pulse");
-    sessionTracker.logWithSnapshot("session_start", { appMode }, layerVisibilityRef.current);
 
     const updateCamera = () => {
       const c = map.getCenter();
@@ -968,11 +973,8 @@ export default function App() {
       const lat = +c.lat.toFixed(4);
       const lng = +c.lng.toFixed(4);
       const p = +map.getPitch().toFixed(0);
-      setCameraInfo({ lng, lat, zoom: z, pitch: p, bearing: +map.getBearing().toFixed(0) });
       if (!privateViewRef.current) sessionTracker.logMapView(z, lat, lng, p);
     };
-    map.on("move", updateCamera);
-    updateCamera();
 
     // H3 zoom-based resolution switching
     const onZoomH3 = () => {
@@ -980,8 +982,6 @@ export default function App() {
       setH3Resolution(res);
       setDemoResolution(Math.min(res, 8)); // cap at 8 for demographics
     };
-    map.on("zoomend", onZoomH3);
-    onZoomH3(); // initial
     // H3 res 預載已移除 — 各 h3* subscriber（L1086 / L1105 / L1119 / L1126）會在 visibility 開啟時自行 loadResolution
 
     bindEvents(map);
@@ -989,37 +989,46 @@ export default function App() {
     // 垃圾設施 / 投放點 Mapbox circle setup 已移至獨立 effect（lazy：任一 wf* toggle 開才 setup）
 
     // 3D 垃圾處理設施 click pick（5 sub-scene 任一命中 → popup）
-    map.on("click", (e) => {
-      const layer = wasteFacilityLayerRef.current;
-      if (!layer) return;
-      // 只在任一 facility 3D toggle 開時嘗試 pick（避免命中隱形物件）
-      const v = layerVisibilityRef.current;
-      if (!(v.wfIncinerator || v.wfLandfill || v.wfLandfillCoastal || v.wfTransfer || v.wfMedical || v.wfMonitoring)) return;
-      const canvas = map.getCanvas();
-      const hit = layer.pickFacility(
-        e.point.x, e.point.y,
-        canvas.clientWidth, canvas.clientHeight,
-      );
-      if (!hit) return;
-      const r = hit.row;
-      setFeatureInfo({
-        layerType: "wasteFacility",
-        properties: {
-          kind: "facility",
-          id: r.id,
-          facility_name: r.facility_name,
-          facility_type: r.facility_type,
-          city: r.city,
-          operator: r.operator,
-          address: r.address,
-          capacity_tpd: r.capacity_tpd,
-          status: r.status,
-          start_year: r.start_year,
-          source_url: r.source_url,
-          is_coastal: r.is_coastal,
-          distance_to_sea_m: r.distance_to_sea_m,
-        },
-      });
+    mapInstanceEvents.ready(map, {
+      onStart: () => {
+        sessionTracker.init("mini-taiwan-pulse");
+        sessionTracker.logWithSnapshot("session_start", { appMode }, layerVisibilityRef.current);
+      },
+      onPrepared: () => setMapPrepared(true),
+      onMove: updateCamera,
+      onZoomEnd: onZoomH3,
+      onClick: (e) => {
+        const layer = wasteFacilityLayerRef.current;
+        if (!layer) return;
+        // 只在任一 facility 3D toggle 開時嘗試 pick（避免命中隱形物件）
+        const v = layerVisibilityRef.current;
+        if (!(v.wfIncinerator || v.wfLandfill || v.wfLandfillCoastal || v.wfTransfer || v.wfMedical || v.wfMonitoring)) return;
+        const canvas = map.getCanvas();
+        const hit = layer.pickFacility(
+          e.point.x, e.point.y,
+          canvas.clientWidth, canvas.clientHeight,
+        );
+        if (!hit) return;
+        const r = hit.row;
+        setFeatureInfo({
+          layerType: "wasteFacility",
+          properties: {
+            kind: "facility",
+            id: r.id,
+            facility_name: r.facility_name,
+            facility_type: r.facility_type,
+            city: r.city,
+            operator: r.operator,
+            address: r.address,
+            capacity_tpd: r.capacity_tpd,
+            status: r.status,
+            start_year: r.start_year,
+            source_url: r.source_url,
+            is_coastal: r.is_coastal,
+            distance_to_sea_m: r.distance_to_sea_m,
+          },
+        });
+      },
     });
   };
 
@@ -1719,7 +1728,8 @@ export default function App() {
                 hour12: false,
               })}
             </div>
-            <div
+            <CameraHud
+              store={cameraHud}
               style={{
                 fontSize: FONT_SIZE.lg,
                 fontFamily: FONT_DATA,
@@ -1728,9 +1738,7 @@ export default function App() {
                 marginTop: 4,
                 textShadow: "0 1px 6px rgba(0,0,0,0.5)",
               }}
-            >
-              {cameraInfo.lat}, {cameraInfo.lng} z{cameraInfo.zoom} pitch {cameraInfo.pitch} bearing {cameraInfo.bearing}
-            </div>
+            />
           </div>
           <button
             onClick={() => setCaptureMode(false)}
@@ -1948,6 +1956,7 @@ export default function App() {
 
           {/* Monitor Mode 戰情看板（底部上拉） */}
           <MonitorPanel
+            privateDataScope={isOwner && !memberAuthLoading ? memberUser?.id ?? null : null}
             open={monitorOpen}
             onClose={() => setMonitorOpen(false)}
             mode={monitorMode}
@@ -2234,15 +2243,14 @@ export default function App() {
               {layerVisibility.wasteTruck && ` · ${wasteCount} waste`}
               {viewMode === "time-window" && " (±12h)"}
             </div>
-            <div
+            <CameraHud
+              store={cameraHud}
               style={{
                 color: isDarkTheme ? COLORS.textDim : "rgba(0,0,0,0.3)",
                 fontSize: FONT_SIZE.base,
                 fontFamily: FONT_DATA,
               }}
-            >
-              {cameraInfo.lat}, {cameraInfo.lng} z{cameraInfo.zoom} pitch {cameraInfo.pitch} bearing {cameraInfo.bearing}
-            </div>
+            />
           </div>
         </>
       )}

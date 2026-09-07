@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useMonitorResource } from "../../hooks/useMonitorResource";
+import { MonitorDataStatus } from "./monitor/MonitorDataStatus";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { COLORS, FONT_CJK, FONT_DATA, type AlertGroupShort } from "./intelTokens";
 import { ELEVATION, RADIUS, FONT_SIZE } from "../../styles/designTokens";
 import { IntelIcon, ICON } from "./IntelIcon";
@@ -29,8 +31,8 @@ import {
   tallySummary,
   EMPTY_TALLY,
   type ActiveAlert,
-  type AlertSummary,
 } from "../../data/alertsLoader";
+import { useIntelPollingQuery } from "../../hooks/useIntelPollingQuery";
 import {
   partitionByPersistence,
   ALERT_PERSISTENCE_RULES,
@@ -45,6 +47,10 @@ import { globalSituationFeedStore } from "../../state/globalSituationFeedStore";
 const EMPTY_HEALTH: SourceHealthSummary = {
   total: 0, ok: 0, lagging: 0, degraded: 0, unknown: 0, rows: [],
 };
+const EMPTY_ALERT_SUMMARY: [] = [];
+const EMPTY_CLUSTERS: Array<{
+  county: string | null; location_name: string | null; lon: number | null; lat: number | null; events: IntelCardEvent[];
+}> = [];
 
 const RANGE_SEC: Record<TimeRange, number> = { "1h": 3600, "6h": 21600, "24h": 86400 };
 
@@ -83,6 +89,9 @@ interface Props {
   externalSelectedId?: number | null;
 }
 
+const EMPTY_TRENDING: TrendingRow[] = [];
+const loadTrending = () => fetchNewsTrending(1, 50);
+
 export function IntelPanel({
   open,
   onClose,
@@ -114,7 +123,6 @@ export function IntelPanel({
   const [alertsExpanded, setAlertsExpanded] = useState(false);
   const [pickedGroups, setPickedGroups] = useState<AlertGroupShort[]>([]);
   const [severityMin, setSeverityMin] = useState<1 | 2 | 3 | 4>(1);
-  const [alertSummaryRows, setAlertSummaryRows] = useState<AlertSummary[]>([]);
   const [activeAlerts, setActiveAlerts] = useState<ActiveAlert[]>([]);
   const [alertSelectedId, setAlertSelectedId] = useState<string | null>(null);
   const [alertExpandedId, setAlertExpandedId] = useState<string | null>(null);
@@ -122,18 +130,33 @@ export function IntelPanel({
   /** 非 null = 時間軸停在過去某天，警報列表改看該日歷史 */
   const [historyDate, setHistoryDate] = useState<string | null>(null);
   const [historyAlerts, setHistoryAlerts] = useState<ActiveAlert[]>([]);
+  const [newsDayKey, setNewsDayKey] = useState(() => timeStore.getDateKey());
 
-  const [sourceHealth, setSourceHealth] = useState<SourceHealthSummary>(EMPTY_HEALTH);
-  const [trending, setTrending] = useState<TrendingRow[]>([]);
-  const [clusters, setClusters] = useState<
-    Array<{
-      county: string | null;
-      location_name: string | null;
-      lon: number | null;
-      lat: number | null;
-      events: IntelCardEvent[];
-    }>
-  >([]);
+  const sourceQuery = useMonitorResource({ open, queryKey: "source-health", intervalMs: 60_000, emptyData: EMPTY_HEALTH, load: fetchSourceHealth });
+  const trendingQuery = useMonitorResource({ open, queryKey: "trending:1:50", intervalMs: 60_000, emptyData: EMPTY_TRENDING, load: loadTrending });
+  const sourceHealth = sourceQuery.data;
+  const trending = trendingQuery.data;
+  const fKey = `${filter.minRelevance}|${filter.eventsOnly ? 1 : 0}|${filter.minSeverity}`;
+  const newsFilter = useMemo(() => ({ ...filter }), [fKey]);
+  const loadClusters = useCallback(async () => {
+    const rows = await fetchNewsEventsDayClusters(newsDayKey, newsFilter);
+    return {
+      status: "ready" as const,
+      lastSuccessAt: Date.now(),
+      data: rows.map((r) => ({
+        county: r.county, location_name: r.location_name, lon: r.lon, lat: r.lat,
+        events: (r.events ?? []).map<IntelCardEvent>((e, idx, arr) => ({
+          ...e, county: r.county ?? undefined, location_name: r.location_name ?? undefined,
+          related_count: Math.max(0, arr.length - 1 - idx),
+        })),
+      })),
+    };
+  }, [newsDayKey, newsFilter]);
+  const clustersQuery = useIntelPollingQuery({
+    enabled: open, queryKey: `${newsDayKey}|${fKey}`, intervalMs: 60_000,
+    emptyData: EMPTY_CLUSTERS, load: loadClusters,
+  });
+  const clusters = clustersQuery.data;
 
   // tick now（顯示與倒數）
   useEffect(() => {
@@ -142,36 +165,10 @@ export function IntelPanel({
     return () => window.clearInterval(id);
   }, [open]);
 
-  // 60s polling source health + trending（降載：cross-tab TTL 已蓋住中間的 re-render）
-  useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    const tick = () => {
-      fetchSourceHealth().then((s) => alive && setSourceHealth(s));
-      fetchNewsTrending(1, 50).then((t) => alive && setTrending(t));
-    };
-    tick();
-    const id = window.setInterval(tick, 60_000);
-    return () => {
-      alive = false;
-      window.clearInterval(id);
-    };
-  }, [open]);
-
-  // 60s polling alert summary（降載）
-  useEffect(() => {
-    if (!open) return;
-    let alive = true;
-    const tick = () => {
-      fetchAlertSummary().then((s) => alive && setAlertSummaryRows(s));
-    };
-    tick();
-    const id = window.setInterval(tick, 60_000);
-    return () => {
-      alive = false;
-      window.clearInterval(id);
-    };
-  }, [open]);
+  const alertSummaryQuery = useIntelPollingQuery({
+    enabled: open, queryKey: "alert-summary", intervalMs: 60_000,
+    emptyData: EMPTY_ALERT_SUMMARY, load: fetchAlertSummary,
+  });
 
   // ── 歷史檢索：時間軸切到過去某天 → 警報改看「該日 NCDR 示警」──
   // 重用地圖那支按日 RPC（已含 loadingRegistry + 10min 快取），不新開 RPC。
@@ -218,39 +215,16 @@ export function IntelPanel({
     return () => { alive = false; };
   }, [open, needsAlertList, groupKey, severityMin, pickedGroups]);
 
-  // 跟著 timeStore 日期載資料 + filter 變動觸發重抓
-  const fKey = `${filter.minRelevance}|${filter.eventsOnly ? 1 : 0}|${filter.minSeverity}`;
+  // 跟著 timeStore 日期切換 scope；guarded polling 負責初載與 60s refresh。
   useEffect(() => {
     if (!open) return;
-    let alive = true;
     const handler = (dateStr: string) => {
       if (!dateStr) return;
-      fetchNewsEventsDayClusters(dateStr, filter).then((rows) => {
-        if (!alive) return;
-        const built = rows.map((r) => {
-          const events = (r.events ?? []).map<IntelCardEvent>((e, idx, arr) => ({
-            ...e,
-            county: r.county ?? undefined,
-            location_name: r.location_name ?? undefined,
-            related_count: Math.max(0, arr.length - 1 - idx),
-          }));
-          return {
-            county: r.county,
-            location_name: r.location_name,
-            lon: r.lon,
-            lat: r.lat,
-            events,
-          };
-        });
-        setClusters(built);
-      });
+      setNewsDayKey(dateStr);
     };
     handler(timeStore.getDateKey());
     const unsub = timeStore.subscribeDate(handler);
-    return () => {
-      alive = false;
-      unsub();
-    };
+    return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, fKey]);
 
@@ -394,8 +368,8 @@ export function IntelPanel({
   };
 
   const alertTally = useMemo(
-    () => (alertSummaryRows.length ? tallySummary(alertSummaryRows) : EMPTY_TALLY),
-    [alertSummaryRows],
+    () => (alertSummaryQuery.status === "ready" ? tallySummary(alertSummaryQuery.data) : EMPTY_TALLY),
+    [alertSummaryQuery],
   );
 
   // 「持續中」折疊：長效期告警（海洋污染／長期停水…）不佔主列表。
@@ -504,6 +478,8 @@ export function IntelPanel({
 
       {!isGlobalEventsTab && <AlertSummaryBar
         tally={alertTally}
+        status={alertSummaryQuery.status}
+        lastSuccessAt={alertSummaryQuery.lastSuccessAt}
         expanded={alertsExpanded}
         onToggle={() => setAlertsExpanded((v) => !v)}
         activeGroups={pickedGroups}
@@ -650,12 +626,22 @@ export function IntelPanel({
         </div>
       ) : null}
 
+      <MonitorDataStatus label="來源健康" query={sourceQuery} />
+      <MonitorDataStatus label="升溫排行" query={trendingQuery} />
+      {(feedTab === "news" || feedTab === "all") && clustersQuery.status !== "ready" && (
+        <div style={{ padding: "8px 14px", fontFamily: FONT_CJK, fontSize: FONT_SIZE.xs, color: COLORS.textMuted, borderBottom: `1px solid ${COLORS.borderSoft}` }}>
+          {clustersQuery.status === "denied" ? "新聞資料無權限讀取" : clustersQuery.status === "error" ? `新聞更新中斷${clustersQuery.lastSuccessAt ? ` · 最後成功 ${new Date(clustersQuery.lastSuccessAt).toLocaleTimeString("zh-TW", { hour: "2-digit", minute: "2-digit" })}` : ""}` : "正在讀取新聞資料"}
+        </div>
+      )}
+
       {feedTab === "news" && (
-        <IntelSituation
-          events={flatEvents}
-          countyByEventId={countyByEventId}
-          trending={trending}
-        />
+        <>
+          <IntelSituation
+            events={flatEvents}
+            countyByEventId={countyByEventId}
+            trending={trending}
+          />
+        </>
       )}
 
       <div className="mtp-scroll" style={{ flex: 1, overflowY: "auto", padding: "12px 14px 14px" }}>

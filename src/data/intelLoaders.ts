@@ -6,6 +6,7 @@
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import { withLoading } from "../lib/loadingRegistry";
 import { cachedOnce, cachedByKey, keyedThunkCache } from "../lib/loaderCache";
+import { isAccessDenied } from "../lib/layerGates";
 
 // TTL：對齊 60s polling interval，讓 IntelPanel + MonitorPanel 同 tick 共享一次 fetch、減輕連線池。
 const TTL_FAST = 55_000;   // 即時值（pressure / market / alertSummary）— 約每次輪詢實打一次
@@ -55,7 +56,7 @@ function summarize(rows: SourceHealthRow[]): SourceHealthSummary {
 }
 
 async function _fetchSourceHealthRaw(): Promise<SourceHealthSummary> {
-  if (!supabaseConfigured) return summarize([]);
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     "intel:source-health",
     "新聞來源健康",
@@ -63,7 +64,7 @@ async function _fetchSourceHealthRaw(): Promise<SourceHealthSummary> {
   );
   if (error) {
     console.warn("[Intel] get_source_health failed:", error.message);
-    return summarize([]);
+    throw error;
   }
   return summarize(asArray<SourceHealthRow>(data));
 }
@@ -83,7 +84,7 @@ async function _fetchNewsTrendingRaw(
   windowHours: number,
   limit: number,
 ): Promise<TrendingRow[]> {
-  if (!supabaseConfigured) return [];
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     "intel:trending",
     "新聞升溫排行",
@@ -94,7 +95,7 @@ async function _fetchNewsTrendingRaw(
   );
   if (error) {
     console.warn("[Intel] get_news_trending failed:", error.message);
-    return [];
+    throw error;
   }
   return asArray<TrendingRow>(data);
 }
@@ -138,12 +139,26 @@ export interface PressureIndexNow {
   asof: string | null;   // ISO
 }
 
+export interface IntelLoadResult<T> {
+  status: "ready" | "error" | "denied";
+  data: T;
+  lastSuccessAt: number | null;
+  message?: string | null;
+}
+
 const EMPTY_PRESSURE: PressureIndexNow = {
   composite: 0, level: null, vs_baseline: 0, vs_1h_ago: 0, per_signal: [], asof: null,
 };
 
-async function _fetchPressureIndexRaw(): Promise<PressureIndexNow> {
-  if (!supabaseConfigured) return EMPTY_PRESSURE;
+function requiredFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value !== "string" || !value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function _fetchPressureIndexRaw(): Promise<IntelLoadResult<PressureIndexNow>> {
+  if (!supabaseConfigured) return { status: "error", data: EMPTY_PRESSURE, lastSuccessAt: null, message: "Supabase 未設定" };
   const { data, error } = await withLoading(
     "intel:pressure-index",
     "壓力指數",
@@ -151,18 +166,30 @@ async function _fetchPressureIndexRaw(): Promise<PressureIndexNow> {
   );
   if (error) {
     console.warn("[Intel] get_pressure_index_now failed:", error.message);
-    return EMPTY_PRESSURE;
+    return {
+      status: isAccessDenied(error) ? "denied" : "error",
+      data: EMPTY_PRESSURE,
+      lastSuccessAt: null,
+      message: error.message,
+    };
   }
   // RPC 可能回 single row 或 array，做防呆攤平
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return EMPTY_PRESSURE;
+  const composite = requiredFiniteNumber(row?.composite);
+  if (!row || row.asof == null || composite === null) {
+    return { status: "error", data: EMPTY_PRESSURE, lastSuccessAt: null, message: "壓力指數尚無有效觀測值" };
+  }
   return {
-    composite: Number(row.composite ?? 0),
-    level: row.level ?? null,
-    vs_baseline: Number(row.vs_baseline ?? 0),
-    vs_1h_ago: Number(row.vs_1h_ago ?? 0),
-    per_signal: asArray<PressureSignal>(row.per_signal),
-    asof: row.asof ?? null,
+    status: "ready",
+    lastSuccessAt: Date.now(),
+    data: {
+      composite,
+      level: row.level ?? null,
+      vs_baseline: Number(row.vs_baseline ?? 0),
+      vs_1h_ago: Number(row.vs_1h_ago ?? 0),
+      per_signal: asArray<PressureSignal>(row.per_signal),
+      asof: row.asof ?? null,
+    },
   };
 }
 export const fetchPressureIndex = cachedOnce(_fetchPressureIndexRaw, TTL_FAST);
@@ -222,8 +249,8 @@ const EMPTY_MARKET: MarketIndex = {
   change: 0, change_pct: 0, turnover: null, time: null, status: null,
 };
 
-async function _fetchMarketIndexRaw(): Promise<MarketIndex> {
-  if (!supabaseConfigured) return EMPTY_MARKET;
+async function _fetchMarketIndexRaw(): Promise<IntelLoadResult<MarketIndex>> {
+  if (!supabaseConfigured) return { status: "error", data: EMPTY_MARKET, lastSuccessAt: null, message: "Supabase 未設定" };
   // realtime.* 不能直接打，走 public RPC wrapper（後端已上線 get_market_index_now）
   const { data, error } = await withLoading(
     "intel:market-index",
@@ -232,25 +259,34 @@ async function _fetchMarketIndexRaw(): Promise<MarketIndex> {
   );
   if (error) {
     console.warn("[Intel] get_market_index_now failed:", error.message);
-    return EMPTY_MARKET;
+    return {
+      status: isAccessDenied(error) ? "denied" : "error",
+      data: EMPTY_MARKET,
+      lastSuccessAt: null,
+      message: error.message,
+    };
   }
   const row = Array.isArray(data) ? data[0] : data;
-  if (!row) return EMPTY_MARKET;
+  if (!row) return { status: "ready", data: EMPTY_MARKET, lastSuccessAt: Date.now() };
   const index = Number(row.index ?? row.idx ?? 0);
   const prev = Number(row.prev_close ?? row.y ?? 0);
   const change = Number(row.change ?? (index - prev).toFixed(2));
   const pct = Number(row.change_pct ?? (prev ? +((change / prev) * 100).toFixed(2) : 0));
   return {
-    index,
-    prev_close: prev,
-    open: Number(row.open ?? 0),
-    high: Number(row.high ?? 0),
-    low: Number(row.low ?? 0),
-    change,
-    change_pct: pct,
-    turnover: row.turnover ?? null,
-    time: row.time ?? null,
-    status: row.status ?? null,
+    status: "ready",
+    lastSuccessAt: Date.now(),
+    data: {
+      index,
+      prev_close: prev,
+      open: Number(row.open ?? 0),
+      high: Number(row.high ?? 0),
+      low: Number(row.low ?? 0),
+      change,
+      change_pct: pct,
+      turnover: row.turnover ?? null,
+      time: row.time ?? null,
+      status: row.status ?? null,
+    },
   };
 }
 export const fetchMarketIndex = cachedOnce(_fetchMarketIndexRaw, TTL_FAST);
@@ -269,7 +305,7 @@ export interface MarketIndexDailyPoint {
 }
 
 async function _fetchMarketIndexHistoryRaw(): Promise<MarketIndexDailyPoint[]> {
-  if (!supabaseConfigured) return [];
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     "intel:market-history",
     "加權指數 30 日",
@@ -277,7 +313,7 @@ async function _fetchMarketIndexHistoryRaw(): Promise<MarketIndexDailyPoint[]> {
   );
   if (error) {
     console.warn("[Intel] get_market_index_daily failed:", error.message);
-    return [];
+    throw error;
   }
   return asArray<MarketIndexDailyPoint>(data);
 }
@@ -441,7 +477,7 @@ export interface YtLiveVideo {
 }
 
 async function _fetchLiveVideosRaw(onlyLive: boolean): Promise<YtLiveVideo[]> {
-  if (!supabaseConfigured) return [];
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     "intel:yt-live-videos",
     "YouTube 直播解析",
@@ -449,7 +485,7 @@ async function _fetchLiveVideosRaw(onlyLive: boolean): Promise<YtLiveVideo[]> {
   );
   if (error) {
     console.warn("[Intel] get_yt_live_videos failed:", error.message);
-    return [];
+    throw error;
   }
   return asArray<YtLiveVideo>(data);
 }
@@ -459,7 +495,7 @@ export function fetchLiveVideos(onlyLive = false): Promise<YtLiveVideo[]> {
 }
 
 async function _fetchPublicHealthWeeklyRaw(): Promise<PublicHealthWeek> {
-  if (!supabaseConfigured) return EMPTY_HEALTH;
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     "intel:public-health",
     "CDC 公衛週報",
@@ -467,7 +503,7 @@ async function _fetchPublicHealthWeeklyRaw(): Promise<PublicHealthWeek> {
   );
   if (error) {
     console.warn("[Intel] get_public_health_weekly failed:", error.message);
-    return EMPTY_HEALTH;
+    throw error;
   }
   const rows = Array.isArray(data) ? data : data ? [data] : [];
   if (rows.length === 0) return EMPTY_HEALTH;
@@ -566,7 +602,7 @@ export const PLA_KIND_LABELS: Record<string, string> = {
 const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 
 async function _fetchPlaSeverityDaily(windowDays: number): Promise<PlaSeverityDay[]> {
-  if (!supabaseConfigured) return [];
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     `pla:severity:${windowDays}`,
     "共機嚴重度",
@@ -574,7 +610,7 @@ async function _fetchPlaSeverityDaily(windowDays: number): Promise<PlaSeverityDa
   );
   if (error) {
     console.warn("[Intel] get_pla_severity_daily failed:", error.message);
-    return [];
+    throw error;
   }
   return asArray<Record<string, unknown>>(data).map((r) => ({
     reportDate: String(r.report_date),
@@ -604,7 +640,7 @@ export function fetchPlaSeverityDaily(windowDays = 120): Promise<PlaSeverityDay[
 }
 
 async function _fetchPlaSituationSummary(windowDays: number): Promise<PlaSituationSummary | null> {
-  if (!supabaseConfigured) return null;
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     `pla:summary:${windowDays}`,
     "共機視窗統計",
@@ -612,7 +648,7 @@ async function _fetchPlaSituationSummary(windowDays: number): Promise<PlaSituati
   );
   if (error) {
     console.warn("[Intel] get_pla_situation_summary failed:", error.message);
-    return null;
+    throw error;
   }
   const r = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | undefined;
   if (!r) return null;
@@ -637,7 +673,7 @@ export function fetchPlaSituationSummary(windowDays = 120): Promise<PlaSituation
 }
 
 async function _fetchPlaKindSummary(windowDays: number): Promise<PlaKindStat[]> {
-  if (!supabaseConfigured) return [];
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     `pla:kinds:${windowDays}`,
     "共機機型",
@@ -645,7 +681,7 @@ async function _fetchPlaKindSummary(windowDays: number): Promise<PlaKindStat[]> 
   );
   if (error) {
     console.warn("[Intel] get_pla_kind_summary failed:", error.message);
-    return [];
+    throw error;
   }
   return asArray<Record<string, unknown>>(data).map((r) => ({
     kind: String(r.kind),
@@ -730,7 +766,7 @@ const isFoodIndicator = (v: unknown): v is FoodIndicator =>
   typeof v === "string" && (FOOD_ORDER as string[]).includes(v);
 
 async function _fetchFoodPriceDaily(days: number): Promise<FoodPriceDay[]> {
-  if (!supabaseConfigured) return [];
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     `food:daily:${days}`,
     "食品價格指數",
@@ -738,7 +774,7 @@ async function _fetchFoodPriceDaily(days: number): Promise<FoodPriceDay[]> {
   );
   if (error) {
     console.warn("[Intel] get_food_price_daily failed:", error.message);
-    return [];
+    throw error;
   }
   return asArray<Record<string, unknown>>(data)
     .filter((r) => isFoodIndicator(r.indicator))
@@ -754,7 +790,7 @@ async function _fetchFoodPriceDaily(days: number): Promise<FoodPriceDay[]> {
 }
 
 async function _fetchFoodPriceSummary(days: number): Promise<FoodPriceSummary[]> {
-  if (!supabaseConfigured) return [];
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     `food:summary:${days}`,
     "食品價格摘要",
@@ -762,7 +798,7 @@ async function _fetchFoodPriceSummary(days: number): Promise<FoodPriceSummary[]>
   );
   if (error) {
     console.warn("[Intel] get_food_price_summary failed:", error.message);
-    return [];
+    throw error;
   }
   return asArray<Record<string, unknown>>(data)
     .filter((r) => isFoodIndicator(r.indicator))
@@ -830,7 +866,7 @@ export interface VesselZoneDay {
 }
 
 async function _fetchVesselZoneDaily(windowDays: number): Promise<VesselZoneDay[]> {
-  if (!supabaseConfigured) return [];
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     `vesselZone:daily:${windowDays}`,
     "特殊船舶接近帶",
@@ -838,7 +874,7 @@ async function _fetchVesselZoneDaily(windowDays: number): Promise<VesselZoneDay[
   );
   if (error) {
     console.warn("[Intel] get_vessel_zone_daily failed:", error.message);
-    return [];
+    throw error;
   }
   return asArray<Record<string, unknown>>(data).map((r) => ({
     day: String(r.day),
@@ -929,7 +965,7 @@ export interface TraDelayTrain {
 }
 
 async function _fetchTraDelaySummary(days: number): Promise<TraDelayDay[]> {
-  if (!supabaseConfigured) return [];
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const { data, error } = await withLoading(
     `tra-delay:summary:${days}`,
     "台鐵誤點彙總",
@@ -937,7 +973,7 @@ async function _fetchTraDelaySummary(days: number): Promise<TraDelayDay[]> {
   );
   if (error) {
     console.warn("[Intel] get_tra_delay_summary failed:", error.message);
-    return [];
+    throw error;
   }
   return asArray<Record<string, unknown>>(data).map((r) => ({
     serviceDate: String(r.service_date),
@@ -969,7 +1005,7 @@ export function fetchTraDelaySummary(days = 60): Promise<TraDelayDay[]> {
 }
 
 async function _fetchTraDelayTrains(key: string): Promise<TraDelayTrain[]> {
-  if (!supabaseConfigured) return [];
+  if (!supabaseConfigured) throw new Error("Supabase 未設定");
   const [day, minDelay, limit] = key.split("|");
   const { data, error } = await withLoading(
     `tra-delay:trains:${key}`,
@@ -982,7 +1018,7 @@ async function _fetchTraDelayTrains(key: string): Promise<TraDelayTrain[]> {
   );
   if (error) {
     console.warn("[Intel] get_tra_delay_trains failed:", error.message);
-    return [];
+    throw error;
   }
   return asArray<Record<string, unknown>>(data).map((r) => ({
     serviceDate: String(r.service_date),
