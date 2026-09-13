@@ -1,5 +1,6 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapboxMap } from "maplibre-gl";
 import { FireStationScene, type FireStationRow } from "../three/FireStationScene";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 /**
  * 消防分隊 3D Custom Layer — 光柱（高度依階級）+ 向外擴張漣漪。
@@ -52,7 +53,8 @@ export function createFireStationLayer(opts: FireStationLayerOptions): CustomLay
       loadData();
     },
 
-    render(_gl: WebGLRenderingContext, matrix: number[]) {
+    render(_gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      const matrix = customLayerMatrix(renderInput);
       const show = opts.getIsVisible() && loaded;
       scene.setVisible(show);
       if (!show) return;

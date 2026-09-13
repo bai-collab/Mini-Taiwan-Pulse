@@ -4,7 +4,7 @@
  * 參考：https://airtw.moenv.gov.tw/CHT/Information/Standard/AirQualityIndicator_new.aspx
  */
 
-import type { ExpressionSpecification } from "mapbox-gl";
+import type { ExpressionSpecification } from "maplibre-gl";
 
 export interface AqiLevel {
   max: number;                 // 區間上限（含）

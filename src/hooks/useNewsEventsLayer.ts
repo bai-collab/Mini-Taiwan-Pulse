@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import type { Map as MapboxMap, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource } from "maplibre-gl";
 import { fetchNewsEventsDay, DEFAULT_NEWS_FILTER, type NewsFilter } from "../data/newsEventsLoader";
 import { timeStore } from "../state/timeStore";
 import { keepLoadingUntilMapIdle } from "../lib/loadingRegistry";

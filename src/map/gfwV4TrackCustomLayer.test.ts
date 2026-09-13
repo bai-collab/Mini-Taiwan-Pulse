@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import type { GfwV4TrackScene } from "../three/GfwV4TrackScene";
 import { createGfwV4TrackCustomLayer, GFW_V4_TRACK_CUSTOM_LAYER_ID } from "./gfwV4TrackCustomLayer";
 

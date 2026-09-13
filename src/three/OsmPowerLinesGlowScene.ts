@@ -12,7 +12,7 @@
  * 取代 Mapbox 4 層 stacking 的 line-blur 方案；Mapbox 端只留 transparent core 給 hit-test。
  */
 import * as THREE from "three";
-import mapboxgl from "mapbox-gl";
+import maplibregl from "maplibre-gl";
 
 export interface PowerLineFeature {
   /** [[lng, lat], ...] */
@@ -153,8 +153,8 @@ export class OsmPowerLinesGlowScene {
         const [lngA, latA] = coords[i]!;
         const [lngB, latB] = coords[i + 1]!;
         if (!Number.isFinite(lngA) || !Number.isFinite(lngB)) continue;
-        const mcA = mapboxgl.MercatorCoordinate.fromLngLat([lngA, latA], 0);
-        const mcB = mapboxgl.MercatorCoordinate.fromLngLat([lngB, latB], 0);
+        const mcA = maplibregl.MercatorCoordinate.fromLngLat([lngA, latA], 0);
+        const mcB = maplibregl.MercatorCoordinate.fromLngLat([lngB, latB], 0);
         bucket.a.push(mcA.x, mcA.y);
         bucket.b.push(mcB.x, mcB.y);
       }

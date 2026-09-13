@@ -11,7 +11,7 @@
  *    uCursorTs / 季窗也同樣相對化。
  */
 import * as THREE from "three";
-import mapboxgl from "mapbox-gl";
+import maplibregl from "maplibre-gl";
 import { RANGE_START } from "../lib/realEstateTime";
 import { RE_PALETTES } from "../map/overlayRegistry";
 import type { RePointsState } from "../state/realEstatePointsStore";
@@ -200,7 +200,7 @@ export class RealEstatePointsScene {
       const lat = data[o + 1]!;
       lngLat[i * 2] = lng;
       lngLat[i * 2 + 1] = lat;
-      const mc = mapboxgl.MercatorCoordinate.fromLngLat([lng, lat], 0);
+      const mc = maplibregl.MercatorCoordinate.fromLngLat([lng, lat], 0);
       positions[i * 3] = mc.x;
       positions[i * 3 + 1] = mc.y;
       positions[i * 3 + 2] = 0;

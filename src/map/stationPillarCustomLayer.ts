@@ -1,7 +1,8 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapboxMap } from "maplibre-gl";
 import * as THREE from "three";
 import { StationPillarScene } from "../three/StationPillarScene";
 import type { StationPillarData } from "../three/StationPillarScene";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export interface StationPillarGroupOptions {
   pillarColor: { dark: number; light: number };
@@ -54,7 +55,8 @@ export function createCombinedStationPillarLayer(
       }
     },
 
-    render(_gl: WebGLRenderingContext, matrix: number[]) {
+    render(_gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      const matrix = customLayerMatrix(renderInput);
       let anyVisible = false;
 
       for (const entry of entries) {

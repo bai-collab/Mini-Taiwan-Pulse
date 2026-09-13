@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import mapboxgl from "mapbox-gl";
+import maplibregl from "maplibre-gl";
 import type { TemperatureGridData } from "../data/temperatureLoader";
 import { DIVERGING_STOPS } from "../data/temperatureWavePalette";
 
@@ -97,7 +97,7 @@ export class TemperatureWaveScene {
 
     // Compute base Z at sea level (mid-latitude of Taiwan)
     const midLat = bottomLeftLat + (rows * resolutionDeg) / 2;
-    const mcBase = mapboxgl.MercatorCoordinate.fromLngLat([bottomLeftLon, midLat], 0);
+    const mcBase = maplibregl.MercatorCoordinate.fromLngLat([bottomLeftLon, midLat], 0);
     this.baseZ = mcBase.z;
 
     for (let r = 0; r < rows; r++) {
@@ -108,7 +108,7 @@ export class TemperatureWaveScene {
         // x = Mercator x
         this.mercatorXY[idx * 2] = (lng + 180) / 360;
         // y = Mercator y
-        const mc = mapboxgl.MercatorCoordinate.fromLngLat([lng, lat], 0);
+        const mc = maplibregl.MercatorCoordinate.fromLngLat([lng, lat], 0);
         this.mercatorXY[idx * 2 + 1] = mc.y;
       }
     }

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import type { RefObject } from "react";
 
 const harness = vi.hoisted(() => {
@@ -55,7 +55,7 @@ vi.mock("../../state/timeStore", () => ({
 }));
 vi.mock("../../lib/loadingRegistry", () => ({ keepLoadingUntilMapIdle: vi.fn() }));
 vi.mock("../../components/TransientNotice", () => ({ showTransientNotice: notice.show }));
-vi.mock("../../map/pmtilesSourceType", () => ({ registerPmtilesSourceTypeOnce: vi.fn() }));
+vi.mock("../../map/pmtilesSourceType", () => ({ registerPmtilesSourceTypeOnce: vi.fn(), pmtilesUrl: (url: string) => url }));
 vi.mock("../../map/gfwPmtilesSourceType", () => ({
   GFW_PMTILES_SOURCE_TYPE: "gfw-pmtile-source",
   registerGfwPmtilesSourceTypeOnce: vi.fn(),

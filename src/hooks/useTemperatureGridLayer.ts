@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapboxMap, MapSourceDataEvent } from "mapbox-gl";
+import type { Map as MapboxMap, MapSourceDataEvent } from "maplibre-gl";
 import type { TemperatureGridData } from "../data/temperatureLoader";
 import { timeStore } from "../state/timeStore";
 import { useMapReadyTick } from "./useMapReadyTick";

@@ -1,6 +1,7 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, Map as MapboxMap } from "maplibre-gl";
 import { PowerRegionBarsScene } from "../three/PowerRegionBarsScene";
 import type { PowerDashboard } from "../data/energyLoader";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export interface PowerRegionBarsLayerOptions {
   getIsVisible: () => boolean;
@@ -25,7 +26,8 @@ export function createPowerRegionBarsLayer(opts: PowerRegionBarsLayerOptions): C
       scene.init(gl);
     },
 
-    render(_gl, matrix) {
+    render(_gl, renderInput) {
+      const matrix = customLayerMatrix(renderInput);
       const visible = opts.getIsVisible();
       scene.setVisible(visible);
       if (!visible) return;

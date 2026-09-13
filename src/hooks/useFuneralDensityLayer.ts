@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapboxMap, FillLayer, LineLayer } from "mapbox-gl";
+import type { Map as MapboxMap, FillLayerSpecification, LineLayerSpecification } from "maplibre-gl";
 import { fetchFuneralDensity, type FuneralDensityData } from "../data/funeralDensityLoader";
 import { funeralDensityColorExpr, FUNERAL_LAYER_COLORS } from "../data/funeralTypes";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
 import { useMapReadyTick } from "./useMapReadyTick";
 
@@ -102,7 +102,7 @@ export function useFuneralDensityLayer(
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
           type: PMTILES_SOURCE_TYPE,
-          url: SOURCE_URL,
+          url: pmtilesUrl(SOURCE_URL),
           minzoom: 6,
           maxzoom: 14,
           // feature-state 染色鍵：feature id = TOWNCODE（8 碼字串，同地震回放）
@@ -121,7 +121,7 @@ export function useFuneralDensityLayer(
             "fill-color": funeralDensityColorExpr(),
             "fill-opacity": opacityRef.current,
           },
-        } as unknown as FillLayer, before);
+        } as unknown as FillLayerSpecification, before);
       }
       if (!map.getLayer(LAYER_LINE)) {
         map.addLayer({
@@ -134,7 +134,7 @@ export function useFuneralDensityLayer(
             "line-width": ["interpolate", ["linear"], ["zoom"], 7, 0.2, 13, 0.8],
             "line-opacity": opacityRef.current * 0.5,
           },
-        } as unknown as LineLayer, before);
+        } as unknown as LineLayerSpecification, before);
       }
       return !!map.getLayer(LAYER_FILL);
     };

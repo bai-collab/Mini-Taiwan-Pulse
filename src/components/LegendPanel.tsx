@@ -57,6 +57,8 @@ import {
   DUST_BAKE_STOPS, rampToGradient,
 } from "../map/climateRamps";
 import { useClimateFrameStatus, type ClimateFrameStatusKey } from "../state/climateFrameStore";
+import { useCwaImageryStatus, type CwaImageryStatus } from "../state/cwaImageryStore";
+import { BUS_VISUAL_TOKENS } from "../data/busVisualTokens";
 import {
   FIRE_STATION_CATS, FIRE_HYDRANT_CATS, FIRE_EVENT_CATS, FIRE_HYDRANT_COVERAGE_NOTE,
   FIRE_ISOCHRONE_BANDS, FIRE_ISOCHRONE_NOTE,
@@ -513,7 +515,7 @@ export const LEGEND_REGISTRY: LegendEntry[] = [
   { id: "medHospital", render: ({ visibility }) => <MedicalLegend visibility={visibility} /> },
   { id: "erHospital", render: () => <ErCongestionLegend /> },
   { id: "parkingOnstreet", render: ({ visibility }) => <ParkingLegend visibility={visibility} /> },
-  { id: "floodSensor", render: () => <FloodSensorLegend /> },
+  { id: "floodSensor", render: ({ visibility }) => <FloodSensorLegend visibility={visibility} /> },
   { id: "powerPlants", render: () => <EnergyFuelLegend /> },
   { id: "powerRegionDemand", render: () => <EnergyReserveLegend /> },
   { id: "osmPowerLines", render: () => <PowerGridLegend /> },
@@ -609,8 +611,12 @@ export const LegendPanel = memo(function LegendPanel({
   // 子圖例文字主題色（透過 context 分發，色票資料兩主題共用）
   const legendPalette = isDarkTheme ? DARK_LEGEND : LIGHT_LEGEND;
 
+  const cloudStatus = useCwaImageryStatus("cwaCloudImagery");
+  const radarStatus = useCwaImageryStatus("cwaRadarImagery");
+  const busLegendVisible = visibility.busLive || visibility.busIntercityLive;
+  const cwaLegendVisible = visibility.cwaCloudImagery || visibility.cwaRadarImagery;
   const active = LEGEND_REGISTRY.filter((e) => legendKeys(e.id).some((k) => visibility[k]));
-  if (active.length === 0) return null;
+  if (active.length === 0 && !busLegendVisible && !cwaLegendVisible) return null;
 
   return (
     <LegendThemeCtx.Provider value={legendPalette}>
@@ -652,9 +658,17 @@ export const LegendPanel = memo(function LegendPanel({
         <span>LEGEND</span>
       </button>
 
+      {cwaLegendVisible && (
+        <div style={{ padding: "0 10px 6px", display: "flex", flexDirection: "column", gap: 5 }}>
+          {visibility.cwaRadarImagery && <CwaImageryStatusLegend label="CWA 雷達" status={radarStatus} />}
+          {visibility.cwaCloudImagery && <CwaImageryStatusLegend label="CWA 雲圖" status={cloudStatus} />}
+        </div>
+      )}
+
       {/* Content — registry 驅動，順序即 LEGEND_REGISTRY 順序 */}
       {expanded && (
         <div style={{ padding: "0 10px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
+          {busLegendVisible && <BusCoverageLegend visibility={visibility} isDarkTheme={isDarkTheme} />}
           {active.map((entry) => (
             <Fragment key={entry.id}>
               {entry.render({ visibility, overlayParams, isDark: isDarkTheme, railSystems })}
@@ -668,6 +682,72 @@ export const LegendPanel = memo(function LegendPanel({
 });
 
 // ── 環境污染：嚴重度（設施 + 場址共用）──
+function formatCwaFrame(iso: string): string {
+  return new Date(iso).toLocaleString("zh-TW", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+}
+
+function CwaImageryStatusLegend({ label, status }: { label: string; status: CwaImageryStatus }) {
+  const t = useLegendTheme();
+  const message = status.state === "ready"
+    ? `frame：${status.frameIso ? formatCwaFrame(status.frameIso) : "—"}`
+    : status.state === "no-data"
+      ? "無資料（目前游標不在可用 frame）"
+      : status.state === "error"
+        ? `載入失敗：${status.error ?? "未知錯誤"}`
+        : status.state === "loading"
+          ? "載入中…"
+          : "尚未載入";
+  const color = status.state === "error" ? "#f87171" : status.state === "no-data" ? "#fb923c" : t.textDim;
+  return (
+    <div style={{ fontSize: FONT_SIZE.xs, lineHeight: 1.35, color }}>
+      <div style={{ color: t.textStrong }}>{label} · 時間游標</div>
+      <div>{message}</div>
+    </div>
+  );
+}
+
+function BusCoverageLegend({ visibility, isDarkTheme }: { visibility: LayerVisibility; isDarkTheme: boolean }) {
+  const t = useLegendTheme();
+  const entries = [
+    visibility.busLive ? BUS_VISUAL_TOKENS.city : null,
+    visibility.busIntercityLive ? BUS_VISUAL_TOKENS.intercity : null,
+  ].filter((entry): entry is (typeof BUS_VISUAL_TOKENS)["city"] | (typeof BUS_VISUAL_TOKENS)["intercity"] => entry !== null);
+  return (
+    <div>
+      <div style={{ fontSize: FONT_SIZE.xs, color: t.textDim, letterSpacing: 1, marginBottom: 4 }}>
+        公車高對比 BUS
+      </div>
+      {entries.map((entry) => (
+        <div key={entry.label} style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 4 }}>
+          <span
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: "50%",
+              background: entry.accent,
+              border: `2px solid ${isDarkTheme ? entry.outlineDark : entry.outlineLight}`,
+              boxShadow: `0 0 0 4px ${entry.accent}55`,
+              flexShrink: 0,
+            }}
+          />
+          <span style={{ fontSize: FONT_SIZE.xs, color: t.textStrong }}>{entry.label}</span>
+        </div>
+      ))}
+      <div style={{ fontSize: FONT_SIZE.xs, color: t.textMuted, marginTop: 5, lineHeight: 1.3 }}>
+        核心色＋輪廓＋光暈，適用一般地圖、縣界、等高線與山體陰影。
+      </div>
+    </div>
+  );
+}
+
 function PollutionSeverityLegend({ visibility }: { visibility: LayerVisibility }) {
   const t = useLegendTheme();
   const bands = visibility.pollutionSite && !visibility.pollutionFacility
@@ -1056,7 +1136,17 @@ const FLOOD_SENSOR_CATS = [
   { color: "#7f1d1d", label: "≥30 cm 極嚴重" },
 ];
 
-function FloodSensorLegend() {
+function UnsupportedCoverageNote({ coverage, reason }: { coverage: string; reason: string }) {
+  const t = useLegendTheme();
+  return (
+    <div style={{ marginTop: 6, padding: "5px 6px", borderRadius: 5, border: "1px solid rgba(251,146,60,0.45)", color: "#fb923c", fontSize: FONT_SIZE.xs, lineHeight: 1.35 }}>
+      <div>coverage=不可（{coverage}）</div>
+      <div style={{ color: t.textMuted }}>unsupported：{reason}</div>
+    </div>
+  );
+}
+
+function FloodSensorLegend({ visibility }: { visibility: LayerVisibility }) {
   const t = useLegendTheme();
   return (
     <div>
@@ -1064,6 +1154,9 @@ function FloodSensorLegend() {
         都市淹水 USWG
       </div>
       <FireCatRows cats={FLOOD_SENSOR_CATS} />
+      {visibility.floodSensorIsochrone && (
+        <UnsupportedCoverageNote coverage="雙北" reason="時圈資料只涵蓋雙北，嘉義不適用。" />
+      )}
     </div>
   );
 }
@@ -4513,6 +4606,7 @@ function TaipeiSewerLegend() {
         水面距地面深度
       </div>
       <FireCatRows cats={TAIPEI_SEWER_CATS} />
+      <UnsupportedCoverageNote coverage="Taipei-only" reason="資料只涵蓋臺北市，嘉義不適用。" />
       <div style={{ fontSize: FONT_SIZE.xs, color: t.textDim, marginTop: 4, lineHeight: 1.3 }}>
         每 60 秒更新（北市水利處）
       </div>
@@ -4541,6 +4635,7 @@ function TaipeiPumbLegend() {
         內池水位 / 最高容許水位
       </div>
       <FireCatRows cats={TAIPEI_PUMB_CATS} />
+      <UnsupportedCoverageNote coverage="Taipei-only" reason="資料只涵蓋臺北市，嘉義不適用。" />
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
         <div
           style={{
@@ -4572,6 +4667,7 @@ function TaipeiEvacuateLegend() {
         北市疏散門 EVACUATE GATE
       </div>
       <FireCatRows cats={TAIPEI_EVACUATE_CATS} />
+      <UnsupportedCoverageNote coverage="Taipei-only" reason="資料只涵蓋臺北市，嘉義不適用。" />
     </div>
   );
 }

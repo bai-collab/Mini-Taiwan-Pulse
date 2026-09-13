@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { CircleLayer, FillLayer, LineLayer, ExpressionSpecification, Map as MapboxMap } from "mapbox-gl";
+import type { CircleLayerSpecification, FillLayerSpecification, LineLayerSpecification, ExpressionSpecification, Map as MapboxMap } from "maplibre-gl";
 import { fetchJpAirports } from "../data/jpAirportsLoader";
 import { useMapReadyTick } from "./useMapReadyTick";
 
@@ -28,7 +28,7 @@ function clampOpacity(opacity: number): number {
   return Math.max(0, Math.min(1, opacity));
 }
 
-function fillLayer(opacity: number): FillLayer {
+function fillLayer(opacity: number): FillLayerSpecification {
   return {
     id: FILL_LAYER_ID,
     type: "fill",
@@ -38,10 +38,10 @@ function fillLayer(opacity: number): FillLayer {
       "fill-color": COLOR,
       "fill-opacity": clampOpacity(opacity),
     },
-  } as FillLayer;
+  } as FillLayerSpecification;
 }
 
-function lineLayer(): LineLayer {
+function lineLayer(): LineLayerSpecification {
   return {
     id: LINE_LAYER_ID,
     type: "line",
@@ -52,10 +52,10 @@ function lineLayer(): LineLayer {
       "line-opacity": 0.6,
       "line-width": LINE_WIDTH,
     },
-  } as LineLayer;
+  } as LineLayerSpecification;
 }
 
-function circleLayer(opacity: number): CircleLayer {
+function circleLayer(opacity: number): CircleLayerSpecification {
   return {
     id: CIRCLE_LAYER_ID,
     type: "circle",
@@ -68,7 +68,7 @@ function circleLayer(opacity: number): CircleLayer {
       "circle-stroke-color": "rgba(15, 23, 42, 0.45)",
       "circle-stroke-width": 0.35,
     },
-  } as CircleLayer;
+  } as CircleLayerSpecification;
 }
 
 /** polygon feature 的 properties.longitude/latitude（機場基準點）派生點 FeatureCollection。 */

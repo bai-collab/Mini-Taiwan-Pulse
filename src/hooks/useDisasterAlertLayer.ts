@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type {
   Map as MapboxMap,
-  FillLayer,
-  LineLayer,
-  CircleLayer,
+  FillLayerSpecification,
+  LineLayerSpecification,
+  CircleLayerSpecification,
   FilterSpecification,
   ExpressionSpecification,
-} from "mapbox-gl";
+  GeoJSONSource,
+} from "maplibre-gl";
 import {
   fetchDisasterAlertsDay,
   alertsToGeoJSON,
@@ -118,7 +119,7 @@ function buildLayers(map: MapboxMap): boolean {
           "fill-color": ["get", "tcolor"] as unknown as ExpressionSpecification,
           "fill-opacity": SEVERITY_FILL_OPACITY,
         },
-      } as FillLayer);
+      } as FillLayerSpecification);
     }
 
     if (!map.getLayer(ids.line)) {
@@ -133,7 +134,7 @@ function buildLayers(map: MapboxMap): boolean {
           "line-width": 1.5,
           "line-opacity": 0.9,
         },
-      } as LineLayer);
+      } as LineLayerSpecification);
     }
 
     if (!map.getLayer(ids.point)) {
@@ -154,7 +155,7 @@ function buildLayers(map: MapboxMap): boolean {
           "circle-stroke-width": 1.2,
           "circle-opacity": 0.85,
         },
-      } as CircleLayer);
+      } as CircleLayerSpecification);
     }
   }
 
@@ -174,7 +175,7 @@ function buildLayers(map: MapboxMap): boolean {
         "circle-stroke-width": 2.5,
         "circle-stroke-opacity": 0,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 
   return true;
@@ -238,7 +239,7 @@ export function useDisasterAlertLayer(
   }, []);
 
   const refreshSource = useCallback((map: MapboxMap, t: number) => {
-    const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    const src = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
     if (!src) return;
     const day = activeDayRef.current ?? [];
     const fc = alertsToGeoJSON(day, t);

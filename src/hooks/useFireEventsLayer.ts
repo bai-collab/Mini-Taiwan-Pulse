@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource } from "maplibre-gl";
 import { loadFireEventsByYear, type FireEvent } from "../data/fireLoader";
 import type { HistoricalGranularity } from "../components/HistoricalTimeline";
 import { useMapReadyTick } from "./useMapReadyTick";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import type { Map as MapboxMap, ExpressionSpecification, CircleLayer } from "mapbox-gl";
+import type { Map as MapboxMap, ExpressionSpecification, CircleLayerSpecification } from "maplibre-gl";
 import { fetchWorldTrashDebris } from "../data/worldTrashDebrisLoader";
 import { useMapReadyTick } from "./useMapReadyTick";
 
@@ -64,7 +64,7 @@ export function useWorldTrashDebrisLayer(
           "circle-stroke-color": "rgba(0,0,0,0.35)",
           "circle-stroke-width": 0.4,
         },
-      } as CircleLayer);
+      } as CircleLayerSpecification);
     }
     return true;
   }, []);

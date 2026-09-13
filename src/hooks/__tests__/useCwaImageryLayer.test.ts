@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import type { RefObject } from "react";
 
 const reactHarness = vi.hoisted(() => {
@@ -68,7 +68,7 @@ vi.mock("../../state/timeStore", () => ({
   },
 }));
 
-import { useCwaImageryLayer } from "../useCwaImageryLayer";
+import { CWA_FRAME_MAX_AGE_MS, pickFrameForTime, useCwaImageryLayer } from "../useCwaImageryLayer";
 
 type TestHandle = {
   setVisible: ReturnType<typeof vi.fn>;
@@ -152,6 +152,24 @@ describe("useCwaImageryLayer visibility lifecycle", () => {
     reactHarness.cleanup();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("游標早於首張或超過允許 stale 間隔時回報無資料，不回退到舊 frame", () => {
+    const frame = {
+      datasetId: "O-A0058-005",
+      observedAtIso: "1970-01-01T00:00:10.000Z",
+      observedAtMs: 10_000,
+      mimeType: "image/png",
+      lonMin: 118,
+      lonMax: 123,
+      latMin: 20,
+      latMax: 27,
+      imageSize: 1,
+    };
+
+    expect(pickFrameForTime([frame], 9_999)).toBeNull();
+    expect(pickFrameForTime([frame], frame.observedAtMs + CWA_FRAME_MAX_AGE_MS)).toBe(frame);
+    expect(pickFrameForTime([frame], frame.observedAtMs + CWA_FRAME_MAX_AGE_MS + 1)).toBeNull();
   });
 
   it("Mapbox busy 時關閉雷達仍立即 soft-hide，不等待下一個 load", async () => {

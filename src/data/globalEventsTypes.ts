@@ -1,4 +1,4 @@
-import type { ExpressionSpecification } from "mapbox-gl";
+import type { ExpressionSpecification } from "maplibre-gl";
 
 export const GLOBAL_EVENT_CATEGORIES = [
   { value: "disaster", label: "災害", color: "#ef4444" },

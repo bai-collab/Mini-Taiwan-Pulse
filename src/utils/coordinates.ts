@@ -3,7 +3,7 @@
  *
  * ⚠️ **引擎顯式注入**（EM-16 / docs/proposal/embed-dynamic-layers.md §9-4）
  *
- * 本檔原本 `import mapboxgl from "mapbox-gl"`，導致任何用到 Three 場景的入口
+ * 本檔原本 `import mapboxgl from "maplibre-gl"`，導致任何用到 Three 場景的入口
  * 都會硬拖進整包 mapbox-gl。`/embed` 走 MapLibre、且**不得**載入 mapbox-gl
  * （體積 + map load 計費），所以改成由「入口」注入建構子：
  *

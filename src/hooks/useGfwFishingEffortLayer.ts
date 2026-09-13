@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { FillLayer, GeoJSONSource, LineLayer, Map as MapboxMap } from "mapbox-gl";
+import type { FillLayerSpecification, GeoJSONSource, LineLayerSpecification, Map as MapboxMap } from "maplibre-gl";
 import {
   loadGfwFishingEffortDay,
   loadGfwFishingEffortManifest,
@@ -52,10 +52,10 @@ function ensureLayers(map: MapboxMap): void {
       source: GFW_FISHING_EFFORT_SOURCE_ID,
       layout: { visibility: "none" },
       paint: {
-        "fill-color": GFW_FISHING_EFFORT_COLOR_EXPRESSION as unknown as NonNullable<FillLayer["paint"]>["fill-color"],
+        "fill-color": GFW_FISHING_EFFORT_COLOR_EXPRESSION as unknown as NonNullable<FillLayerSpecification["paint"]>["fill-color"],
         "fill-opacity": 0.55,
       },
-    } as FillLayer);
+    } as FillLayerSpecification);
   }
   if (!map.getLayer(GFW_FISHING_EFFORT_OUTLINE_LAYER_ID)) {
     map.addLayer({
@@ -68,7 +68,7 @@ function ensureLayers(map: MapboxMap): void {
         "line-width": ["interpolate", ["linear"], ["zoom"], 3, 0.25, 10, 0.8],
         "line-opacity": 0.72,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
 }
 

@@ -4,7 +4,9 @@
 import { tool } from "ai";
 import { z } from "zod";
 import type { MapBridge } from "../types";
+import type { LayerVisibility } from "../../types";
 import { LAYER_LABELS } from "../../components/sidebar/layerCatalog";
+import { trimmedPulseLayerAllowlist } from "../../config/trimmedPulseConfig";
 import { ALL_PRESETS, getPresetById } from "../../map/cameraPresets";
 import { isStatisticsChoropleth } from "../../data/statisticsLayerRegistry";
 
@@ -26,7 +28,11 @@ export function mapTools(bridge: MapBridge) {
         visible: z.boolean().describe("true = 開啟，false = 關閉"),
       }),
       execute: ({ keys, visible }) => {
-        const valid = new Set(Object.keys(LAYER_LABELS));
+        const valid = new Set(
+          Object.keys(LAYER_LABELS).filter((key) =>
+            trimmedPulseLayerAllowlist.has(key as keyof LayerVisibility),
+          ),
+        );
         const applied = keys.filter((k) => valid.has(k));
         const invalid = keys.filter((k) => !valid.has(k));
         const visibleBefore = bridge.getVisibleLayerKeys();

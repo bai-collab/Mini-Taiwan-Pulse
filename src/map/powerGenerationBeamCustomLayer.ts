@@ -1,6 +1,7 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, Map as MapboxMap } from "maplibre-gl";
 import { PowerGenerationBeamScene } from "../three/PowerGenerationBeamScene";
 import type { PowerGenerationRow } from "../data/energyLoader";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export interface PowerGenerationBeamLayerOptions {
   getIsVisible: () => boolean;
@@ -29,7 +30,8 @@ export function createPowerGenerationBeamLayer(
       scene.init(gl);
     },
 
-    render(_gl, matrix) {
+    render(_gl, renderInput) {
+      const matrix = customLayerMatrix(renderInput);
       const visible = opts.getIsVisible();
       scene.setVisible(visible);
       if (!visible) return;

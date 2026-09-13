@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { CircleLayer, ExpressionSpecification, FillLayer, LineLayer, Map as MapboxMap, SymbolLayer } from "mapbox-gl";
+import type { CircleLayerSpecification, ExpressionSpecification, FillLayerSpecification, LineLayerSpecification, Map as MapboxMap, SymbolLayerSpecification } from "maplibre-gl";
 import {
   floorUtcHourIso,
   loadGfwHourlyGridHour,
@@ -9,7 +9,7 @@ import {
 import { keepLoadingUntilMapIdle } from "../lib/loadingRegistry";
 import { setGfwHourlyGridDetailContext, setGfwHourlyGridDominantHour } from "../data/gfwHourlyDetailLoader";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import { pmtilesUrl as toPmtilesProtocolUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { GFW_PMTILES_SOURCE_TYPE, registerGfwPmtilesSourceTypeOnce } from "../map/gfwPmtilesSourceType";
 import { showTransientNotice } from "../components/TransientNotice";
 import { timeStore } from "../state/timeStore";
@@ -232,7 +232,7 @@ function ensureLayer(
       source: sourceId,
       paint: { "fill-color": "#fb923c", "fill-opacity": GFW_HOURLY_GRID_V3_FILL_OPACITY },
       layout: { visibility: "none" },
-    } as FillLayer);
+    } as FillLayerSpecification);
   }
   if (!map.getLayer(outlineId)) {
     map.addLayer({
@@ -241,7 +241,7 @@ function ensureLayer(
       source: sourceId,
       paint: { "line-color": "#7c2d12", "line-width": 1, "line-opacity": 0.85 },
       layout: { visibility: "none" },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
   if (!map.getLayer(circleId)) {
     map.addLayer({
@@ -265,7 +265,7 @@ function ensureLayer(
         "circle-stroke-opacity": 0.9,
       },
       layout: { visibility: "none" },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
   if (!map.getLayer(countId)) {
     map.addLayer({
@@ -286,7 +286,7 @@ function ensureLayer(
         "text-halo-width": 0.8,
         "text-opacity": 0.9,
       },
-    } as SymbolLayer);
+    } as SymbolLayerSpecification);
   }
 }
 
@@ -299,16 +299,16 @@ function ensureLayers(map: MapboxMap): void {
   // hit source 只有 alpha dominant 那一小時的資料；透明 visual layer 不會讓 H+1 搶 popup。
   if (!map.getLayer(GFW_HOURLY_GRID_HIT_FILL_LAYER_ID)) {
     map.addLayer({ id: GFW_HOURLY_GRID_HIT_FILL_LAYER_ID, type: "fill", source: GFW_HOURLY_GRID_HIT_SOURCE_ID,
-      paint: { "fill-opacity": 0 }, layout: { visibility: "none" } } as FillLayer);
+      paint: { "fill-opacity": 0 }, layout: { visibility: "none" } } as FillLayerSpecification);
   }
   if (!map.getLayer(GFW_HOURLY_GRID_HIT_CIRCLE_LAYER_ID)) {
     map.addLayer({ id: GFW_HOURLY_GRID_HIT_CIRCLE_LAYER_ID, type: "circle", source: GFW_HOURLY_GRID_HIT_SOURCE_ID,
-      paint: { "circle-radius": 24, "circle-opacity": 0 }, layout: { visibility: "none" } } as CircleLayer);
+      paint: { "circle-radius": 24, "circle-opacity": 0 }, layout: { visibility: "none" } } as CircleLayerSpecification);
   }
 }
 
 function pmtilesUrl(manifest: GfwHourlyGridManifest, path: string): string {
-  return new URL(path, new URL(manifest.manifestUrl, globalThis.location?.origin ?? "http://localhost")).toString();
+  return toPmtilesProtocolUrl(new URL(path, new URL(manifest.manifestUrl, globalThis.location?.origin ?? "http://localhost")).toString());
 }
 
 function removePmtilesSlot(map: MapboxMap, sourceId: string, layerIds: readonly string[]): void {
@@ -351,7 +351,7 @@ function mountPmtilesSlot(
       "fill-opacity-transition": { duration: 0, delay: 0 },
     },
     layout: { visibility: "visible" },
-  } as FillLayer);
+  } as FillLayerSpecification);
   if (hitOnly) return;
   map.addLayer({ id: outlineId, type: "line", source: sourceId, "source-layer": sourceLayer,
     paint: {
@@ -361,7 +361,7 @@ function mountPmtilesSlot(
       "line-opacity-transition": { duration: 0, delay: 0 },
     },
     layout: { visibility: "visible" },
-  } as LineLayer);
+  } as LineLayerSpecification);
 }
 
 function addPmtilesWarmLayer(map: MapboxMap, sourceId: string, layerId: string, sourceLayer: string): void {
@@ -375,7 +375,7 @@ function addPmtilesWarmLayer(map: MapboxMap, sourceId: string, layerId: string, 
     filter: ["==", ["get", "cell_id"], "__gfw_v4_preload_never__"],
     paint: { "fill-opacity": 1 },
     layout: { visibility: "visible" },
-  } as FillLayer);
+  } as FillLayerSpecification);
 }
 
 function addV4PmtilesHitLayer(map: MapboxMap, sourceId: string, layerId: string, sourceLayer: string): void {
@@ -390,7 +390,7 @@ function addV4PmtilesHitLayer(map: MapboxMap, sourceId: string, layerId: string,
     // decided at query time via `getGfwHourlyGridDominantHitLayerId()`.
     paint: { "fill-opacity": 0 },
     layout: { visibility: "visible" },
-  } as FillLayer);
+  } as FillLayerSpecification);
 }
 
 function setPmtilesVisibility(map: MapboxMap, visible: boolean): void {

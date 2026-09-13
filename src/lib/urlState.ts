@@ -22,6 +22,7 @@
  */
 import type { LayerVisibility } from "../types";
 import { LAYER_COLORS, GATED_LAYERS } from "../components/sidebar/layerCatalog";
+import { trimmedPulseLayerAllowlist } from "../config/trimmedPulseConfig";
 import { isRailCode } from "../constants/railLines";
 import type { StatisticsDisplayMode } from "../state/statisticsDisplayModeStore";
 
@@ -140,6 +141,7 @@ function parseLayers(q: URLSearchParams, opts: ParseOptions): (keyof LayerVisibi
       if (!k || seen.has(k)) return false;
       if (k === "coralReefDistribution") return false; // private account layer is never shareable
       if (!ALL_LAYER_KEYS.has(k)) return false;          // 未知 key（含已下架圖層）
+      if (!trimmedPulseLayerAllowlist.has(k as keyof LayerVisibility)) return false;
       if (GATED_LAYERS.has(k as keyof LayerVisibility)) return false; // owner-only 私人圖層
       if (opts.allowedLayers && !opts.allowedLayers.has(k)) return false;
       seen.add(k);
@@ -262,7 +264,9 @@ export function buildUrl(state: UrlState, base: string): string {
     if (pitch) q.set("pitch", String(round(pitch, 1)));
     if (bearing) q.set("bearing", String(round(bearing, 1)));
   }
-  const layers = state.layers?.filter(k => k !== "coralReefDistribution");
+  const layers = state.layers?.filter(
+    (k) => k !== "coralReefDistribution" && trimmedPulseLayerAllowlist.has(k),
+  );
   if (layers?.length) q.set("layers", layers.join(","));
   if (state.statisticsMode) q.set("sm", state.statisticsMode);
   if (state.params) {

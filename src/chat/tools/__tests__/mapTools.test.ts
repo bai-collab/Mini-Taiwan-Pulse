@@ -10,19 +10,12 @@ beforeEach(() => {
 });
 
 describe("mapTools.set_layers", () => {
-  it("回報 admission 後實際可見的統計面與被替換面，而非請求數量", async () => {
-    const visible = new Set<string>(["statsWasteCounty"]);
+  it("只把 trimmed allowlist 內的 key 交給 bridge", async () => {
+    const visible = new Set<string>(["earthquakes"]);
     const bridge: MapBridge = {
       bulkSetVisibility: (keys, on) => {
         if (!on) keys.forEach((key) => visible.delete(key));
-        else {
-          // 模擬 single-mode admission：crime choropleth 替換既有 recipe，但 boundary 留下。
-          if (keys.includes("crimeAreaMonthly")) {
-            visible.delete("statsWasteCounty");
-            visible.add("crimeAreaMonthly");
-          }
-          if (keys.includes("countyBoundary")) visible.add("countyBoundary");
-        }
+        else if (keys.includes("countyBoundary")) visible.add("countyBoundary");
       },
       allOff: () => visible.clear(),
       flyTo: () => {},
@@ -34,28 +27,30 @@ describe("mapTools.set_layers", () => {
     };
     const tool = mapTools(bridge).set_layers as unknown as {
       execute: (input: { keys: string[]; visible: boolean }) => Promise<{
+        applied: string[];
+        invalid: string[];
         visibleStatistics: string[];
         replacedStatistics: string[];
         visibleNow: string[];
       }>;
     };
 
-    const result = await tool.execute({ keys: ["crimeAreaMonthly", "countyBoundary"], visible: true });
+    const result = await tool.execute({ keys: ["statsWasteCounty", "countyBoundary"], visible: true });
 
-    expect(result.visibleStatistics).toEqual(["crimeAreaMonthly"]);
-    expect(result.replacedStatistics).toEqual(["statsWasteCounty"]);
-    expect(result.visibleNow).toEqual(expect.arrayContaining(["crimeAreaMonthly", "countyBoundary"]));
+    expect(result.applied).toEqual(["countyBoundary"]);
+    expect(result.invalid).toEqual(["statsWasteCounty"]);
+    expect(result.visibleStatistics).toEqual([]);
+    expect(result.replacedStatistics).toEqual([]);
+    expect(result.visibleNow).toEqual(expect.arrayContaining(["earthquakes", "countyBoundary"]));
   });
 
   it("render ref 尚未更新時仍從同步 store 回報 post-write 結果", async () => {
-    layerVisibilityStore.setVisibility("statsWasteCounty", true);
+    layerVisibilityStore.setVisibility("earthquakes", true);
     const renderLaggedVisibility = layerVisibilityStore.getAll();
     const bridge: MapBridge = {
       bulkSetVisibility: (keys, on) => {
         let next = layerVisibilityStore.getAll();
-        if (on && keys.includes("crimeAreaMonthly")) {
-          next = statisticsDisplayModeStore.enable("crimeAreaMonthly", next);
-        }
+        if (on && keys.includes("earthquakes")) next = { ...next, earthquakes: true };
         if (on && keys.includes("countyBoundary")) next = { ...next, countyBoundary: true };
         layerVisibilityStore.setAll(next);
       },
@@ -70,16 +65,18 @@ describe("mapTools.set_layers", () => {
     };
     const tool = mapTools(bridge).set_layers as unknown as {
       execute: (input: { keys: string[]; visible: boolean }) => Promise<{
+        invalid: string[];
         visibleStatistics: string[];
         replacedStatistics: string[];
       }>;
     };
 
-    const result = await tool.execute({ keys: ["crimeAreaMonthly", "countyBoundary"], visible: true });
+    const result = await tool.execute({ keys: ["statsWasteCounty", "countyBoundary"], visible: true });
 
     // 模擬 React 尚未 re-render：舊 ref 還是過去狀態，不能當 tool 的 readback。
-    expect(renderLaggedVisibility.statsWasteCounty).toBe(true);
-    expect(result.visibleStatistics).toEqual(["crimeAreaMonthly"]);
-    expect(result.replacedStatistics).toEqual(["statsWasteCounty"]);
+    expect(renderLaggedVisibility.earthquakes).toBe(true);
+    expect(result.visibleStatistics).toEqual([]);
+    expect(result.replacedStatistics).toEqual([]);
+    expect(result.invalid).toEqual(["statsWasteCounty"]);
   });
 });

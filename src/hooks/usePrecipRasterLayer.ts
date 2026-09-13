@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { fetchPrecipRasterFrames, type PrecipRasterFrame } from "../data/precipRasterLoader";
 import { createCwaImageryLayer, type CwaImageryLayerHandle } from "../map/cwaImageryLayer";
 import { timeStore } from "../state/timeStore";

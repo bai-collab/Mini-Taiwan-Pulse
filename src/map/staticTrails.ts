@@ -1,4 +1,4 @@
-import type { Map as MapboxMap, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource } from "maplibre-gl";
 import type { Flight } from "../types";
 
 const SOURCE_ID = "static-trails";

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import type { Map as MapboxMap, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource } from "maplibre-gl";
 import { fetchErHospitalFC, invalidateErHospitalLatest } from "../data/erHospitalLoader";
 import { useMapReadyTick } from "./useMapReadyTick";
 

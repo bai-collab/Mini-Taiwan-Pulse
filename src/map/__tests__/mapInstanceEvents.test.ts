@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Map as MapboxMap, MapMouseEvent } from "mapbox-gl";
+import type { Map as MapboxMap, MapMouseEvent } from "maplibre-gl";
 import { createMapInstanceEvents } from "../mapInstanceEvents";
 
 function fakeMap() {

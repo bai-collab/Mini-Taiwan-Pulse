@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RefObject } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 
 const harness = vi.hoisted(() => {
   let stateIndex = 0;

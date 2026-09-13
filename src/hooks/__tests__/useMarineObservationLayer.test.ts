@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-// @ts-expect-error — style-spec CJS entry has no exported typings; test-only validator.
-import { validate } from "mapbox-gl/dist/style-spec/index.cjs";
+import { validateStyleMin } from "@maplibre/maplibre-gl-style-spec";
 import {
   MARINE_OBSERVATION_CLICK_LAYERS,
   MARINE_OBSERVATION_STATUS_STYLES,
@@ -54,11 +53,11 @@ describe("marine observation Mapbox layer", () => {
     for (const sourceNetwork of ["cwa", "isohe"] as const) {
       const sourceId = `marine-observation-${sourceNetwork}`;
       for (const layer of marineObservationCircleLayers(sourceNetwork, 0.73)) {
-        const errors = (validate({
+        const errors = validateStyleMin({
           version: 8,
           sources: { [sourceId]: { type: "geojson", data: EMPTY } },
           layers: [layer],
-        }) as { message: string }[]).map((error) => error.message);
+        } as never).map((error) => error.message);
         expect(errors, `${layer.id}: ${errors.join("; ")}`).toEqual([]);
       }
     }

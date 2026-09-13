@@ -1,6 +1,7 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, Map as MapboxMap } from "maplibre-gl";
 import { RealEstatePointsScene } from "../three/RealEstatePointsScene";
 import { rePointsStore } from "../state/realEstatePointsStore";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 /**
  * 房地產交易「點」CustomLayer — 取代 3 個 PMTiles circle 圖層。
@@ -91,7 +92,8 @@ export function createRealEstatePointsLayer(): CustomLayerInterface {
       loadData(token);
     },
 
-    render(_gl, matrix) {
+    render(_gl, renderInput) {
+      const matrix = customLayerMatrix(renderInput);
       const anyShown = rePointsStore.show[0] || rePointsStore.show[1] || rePointsStore.show[2];
       if (!loaded || !anyShown) return;
       const dpr = window.devicePixelRatio || 1;

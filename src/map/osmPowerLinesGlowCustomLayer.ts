@@ -1,5 +1,6 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, Map as MapboxMap } from "maplibre-gl";
 import { OsmPowerLinesGlowScene, type PowerLineFeature } from "../three/OsmPowerLinesGlowScene";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export interface OsmPowerLinesGlowLayerOptions {
   getIsVisible: () => boolean;
@@ -28,7 +29,8 @@ export function createOsmPowerLinesGlowLayer(
       console.log("[osmPowerLinesGlow] onAdd → scene initialized");
     },
 
-    render(_gl, matrix) {
+    render(_gl, renderInput) {
+      const matrix = customLayerMatrix(renderInput);
       const visible = opts.getIsVisible();
       scene.setVisible(visible);
       if (!visible) return;

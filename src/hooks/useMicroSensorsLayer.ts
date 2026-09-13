@@ -20,7 +20,7 @@
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 分鐘，對齊 LASS collector 頻率
 
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap, CircleLayer, SymbolLayer, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, CircleLayerSpecification, SymbolLayerSpecification, GeoJSONSource, FilterSpecification, ExpressionSpecification } from "maplibre-gl";
 import {
   fetchMicroSensorsLatest,
   buildMicroSensorsGeoJSON,
@@ -64,7 +64,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, cluster: boolean, modeIdx
           "circle-opacity": opacity,
           "circle-stroke-opacity": opacity,
         },
-      } as CircleLayer);
+      } as CircleLayerSpecification);
     }
     if (!map.getLayer(LAYER_CLUSTER_COUNT)) {
       map.addLayer({
@@ -78,7 +78,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, cluster: boolean, modeIdx
           "text-font": ["literal", ["Open Sans Regular", "Arial Unicode MS Regular"]],
         },
         paint: { "text-color": "#ffffff", "text-opacity": opacity },
-      } as SymbolLayer);
+      } as SymbolLayerSpecification);
     }
   }
 
@@ -88,18 +88,18 @@ function ensureLayers(map: MapboxMap, isDark: boolean, cluster: boolean, modeIdx
       type: "circle",
       source: SOURCE_ID,
       // cluster 模式下只顯示非聚合的點；全顯模式不套 filter
-      filter: cluster ? ["!", ["has", "point_count"]] : (["has", "deviceId"] as unknown as mapboxgl.FilterSpecification),
+      filter: cluster ? ["!", ["has", "point_count"]] : (["has", "deviceId"] as unknown as FilterSpecification),
       paint: {
         "circle-radius": cluster
           ? ["interpolate", ["linear"], ["zoom"], 9, 2, 12, 4, 15, 6, 18, 10]
           : ["interpolate", ["linear"], ["zoom"], 5, 1.5, 8, 2.5, 11, 4, 15, 7, 18, 11],
-        "circle-color": microSensorColorExpr(modeIdx) as unknown as mapboxgl.ExpressionSpecification,
+        "circle-color": microSensorColorExpr(modeIdx) as unknown as ExpressionSpecification,
         "circle-stroke-width": cluster ? 0.5 : 0.3,
         "circle-stroke-color": isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.3)",
         "circle-opacity": (cluster ? 0.9 : 0.85) * opacity,
         "circle-stroke-opacity": opacity,
       },
-    } as CircleLayer);
+    } as unknown as CircleLayerSpecification);
   }
 }
 
@@ -216,7 +216,7 @@ export function useMicroSensorsLayer(
     map.setPaintProperty(
       LAYER_POINT,
       "circle-color",
-      microSensorColorExpr(modeIdx) as unknown as mapboxgl.ExpressionSpecification,
+      microSensorColorExpr(modeIdx) as unknown as ExpressionSpecification,
     );
   }, [mapRef, visible, modeIdx, mapTick]);
 

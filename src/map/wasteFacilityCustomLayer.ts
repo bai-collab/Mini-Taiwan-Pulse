@@ -13,7 +13,7 @@
  * pick 統一走 customLayer 的 click handler，輪詢 sub-scenes 取最近命中。
  */
 
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapboxMap } from "maplibre-gl";
 import type { WasteFacilityRow } from "../data/wasteLoader";
 import type { FeatureInfo } from "../types";
 import {
@@ -24,6 +24,7 @@ import {
   WasteMedicalScene,
   WasteMonitoringWellScene,
 } from "../three/WasteFacilityScenes";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export type WasteFacility3DKey =
   | "wfIncinerator" | "wfLandfill" | "wfLandfillCoastal"
@@ -97,7 +98,8 @@ export function createWasteFacilityLayer(opts: WasteFacilityLayerOptions): Custo
       opts.onSceneReady?.(scenes);
     },
 
-    render(_gl: WebGLRenderingContext, matrix: number[]) {
+    render(_gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      const matrix = customLayerMatrix(renderInput);
       const byType = opts.getFacilityByType();
       const vis = opts.getVisibility();
       const params = opts.getParams();

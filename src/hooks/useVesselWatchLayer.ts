@@ -1,11 +1,11 @@
 import { useEffect, useRef, useCallback } from "react";
 import type {
   Map as MapboxMap,
-  CircleLayer,
-  LineLayer,
+  CircleLayerSpecification,
+  LineLayerSpecification,
   ExpressionSpecification,
   GeoJSONSource,
-} from "mapbox-gl";
+} from "maplibre-gl";
 import {
   fetchVesselWatchCurrent,
   fetchVesselWatchTrails,
@@ -118,7 +118,7 @@ function buildLayers(map: MapboxMap, opacity: number): boolean {
         "line-width": 1.4,
         "line-opacity": opacity * TRAIL_OPACITY_RATIO,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
 
   if (!map.getLayer(CIRCLE_ID)) {
@@ -136,7 +136,7 @@ function buildLayers(map: MapboxMap, opacity: number): boolean {
         "circle-stroke-width": 0.8,
         "circle-stroke-opacity": confidenceAware(opacity * 0.8),
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 
   return true;

@@ -8,6 +8,10 @@ import { supabase, todayTaiwan } from "../lib/supabase";
 import { withLoading } from "../lib/loadingRegistry";
 // 解析邏輯與 `/embed` 回放共用（EM-16）。見 src/data/flightTrails.ts
 import { flightRowsToFlights, type FlightTrailRow } from "./flightTrails";
+import { fetchOpenSkyDates, loadOpenSkyAirspace } from "./openSkyLoader";
+
+/** 航班資料源：`opensky`＝免費 OpenSky 即時（免付費 FR24）；其餘＝Supabase 軌跡。 */
+const USE_OPENSKY = import.meta.env.VITE_FLIGHTS_SOURCE === "opensky";
 
 export interface AirspaceDateInfo {
   date: string;
@@ -27,6 +31,7 @@ export interface AirspaceData {
 
 /** 取得所有有航班資料的日期 */
 export async function fetchAirspaceDates(): Promise<AirspaceDateInfo[]> {
+  if (USE_OPENSKY) return fetchOpenSkyDates();
   const { data, error } = await withLoading(
     "airspace:dates",
     "航班日期",
@@ -42,6 +47,7 @@ export async function fetchAirspaceDates(): Promise<AirspaceDateInfo[]> {
 
 /** 載入單日空域快照 */
 export async function fetchAirspaceDayArrow(date: string): Promise<AirspaceData> {
+  if (USE_OPENSKY) return loadOpenSkyAirspace(); // OpenSky 只有即時，忽略指定 date
   const t0 = performance.now();
   const { data, error } = await withLoading(
     `airspace:${date}`,

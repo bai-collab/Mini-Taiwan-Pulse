@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource } from "maplibre-gl";
 import { fetchWasteCleaningSquads, type WasteCleaningSquadRow } from "../data/wasteLoader";
 import { useMapReadyTick } from "./useMapReadyTick";
 

@@ -1,4 +1,4 @@
-import type { ExpressionSpecification } from "mapbox-gl";
+import type { ExpressionSpecification } from "maplibre-gl";
 
 // ── 事業者種別（operator_type，5 類，scalar 屬性，非陣列）──
 // 與 jpStationTypes.ts 的 JP_STATION_TYPES 同名類別沿用同一 hex，

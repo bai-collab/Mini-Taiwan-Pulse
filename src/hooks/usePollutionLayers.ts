@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { Map as MapboxMap, FilterSpecification } from "mapbox-gl";
+import type { Map as MapboxMap, FilterSpecification } from "maplibre-gl";
 import {
   FACILITY_MEDIA,
   PENALTY_MEDIA,

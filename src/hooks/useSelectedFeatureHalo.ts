@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { GeoJSONSource, Map as MapboxMap } from "maplibre-gl";
 import type { FeatureInfo } from "../types";
 
 const SOURCE_ID = "selected-feature-halo";
@@ -83,7 +83,7 @@ export function useSelectedFeatureHalo(
       }
 
       const src = map.getSource(SOURCE_ID) as
-        | (mapboxgl.GeoJSONSource & { setData?: (d: GeoJSON.FeatureCollection) => void })
+        | (GeoJSONSource & { setData?: (d: GeoJSON.FeatureCollection) => void })
         | undefined;
       if (!src) return;
 

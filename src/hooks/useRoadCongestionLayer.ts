@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { Map as MapboxMap, LineLayer, ExpressionSpecification, MapSourceDataEvent } from "mapbox-gl";
+import type { Map as MapboxMap, LineLayerSpecification, ExpressionSpecification, MapSourceDataEvent } from "maplibre-gl";
 import {
   fetchRoadCongestionDay,
   levelFromChar,
@@ -7,7 +7,7 @@ import {
   type RoadCongestionDayData,
 } from "../data/roadCongestionLoader";
 import { timeStore } from "../state/timeStore";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
 import { useMapReadyTick } from "./useMapReadyTick";
 
@@ -79,7 +79,7 @@ export function useRoadCongestionLayer(
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
           type: PMTILES_SOURCE_TYPE,
-          url: SOURCE_URL,
+          url: pmtilesUrl(SOURCE_URL),
           minzoom: 5,
           maxzoom: 14,
           // feature-state 染色鍵：feature id = section_uid
@@ -99,7 +99,7 @@ export function useRoadCongestionLayer(
             "line-width": widthExpr(width),
             "line-opacity": opacity,
           },
-        } as unknown as LineLayer);
+        } as unknown as LineLayerSpecification);
       }
       if (!map.getLayer(LAYER_HIT)) {
         map.addLayer({
@@ -112,7 +112,7 @@ export function useRoadCongestionLayer(
             "line-width": 12,
             "line-opacity": 0,
           },
-        } as unknown as LineLayer);
+        } as unknown as LineLayerSpecification);
       }
       layersReadyRef.current = !!map.getLayer(LAYER_LINE);
       return layersReadyRef.current;

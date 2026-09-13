@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapboxMap, PointLike, MapLayerMouseEvent } from "mapbox-gl";
+import type { Map as MapboxMap, PointLike, MapLayerMouseEvent } from "maplibre-gl";
 import type { Flight, RailTrain, BusVehicle, FeatureInfo, LayerVisibility, RealEstateTooltipInfo } from "../types";
 import { GIS_LAYERS } from "../map/gisClickRegistry";
 import { isGfwHourlyGridDominantHitLayer } from "./useGfwHourlyGridLayer";
@@ -35,6 +35,7 @@ interface BusTooltipInfo {
   bus: BusVehicle;
   x: number;
   y: number;
+  scope: "city" | "intercity" | "tourist";
 }
 
 export interface WasteScheduleTooltipInfo {
@@ -184,7 +185,7 @@ export function useMapInteraction(
         if (busScene) {
           const bus = busScene.pickBus(e.point.x, e.point.y, w, h);
           if (bus) {
-            setBusTooltipInfo({ bus, x: e.point.x, y: e.point.y });
+            setBusTooltipInfo({ bus, x: e.point.x, y: e.point.y, scope: "city" });
             setTooltipInfo(null);
             setTrainTooltipInfo(null);
             return;
@@ -200,7 +201,7 @@ export function useMapInteraction(
         if (intercityScene) {
           const bus = intercityScene.pickBus(e.point.x, e.point.y, w, h);
           if (bus) {
-            setBusTooltipInfo({ bus, x: e.point.x, y: e.point.y });
+            setBusTooltipInfo({ bus, x: e.point.x, y: e.point.y, scope: "intercity" });
             setTooltipInfo(null);
             setTrainTooltipInfo(null);
             return;
@@ -214,7 +215,7 @@ export function useMapInteraction(
         if (shuttleScene) {
           const bus = shuttleScene.pickBus(e.point.x, e.point.y, w, h);
           if (bus) {
-            setBusTooltipInfo({ bus, x: e.point.x, y: e.point.y });
+            setBusTooltipInfo({ bus, x: e.point.x, y: e.point.y, scope: "tourist" });
             setTooltipInfo(null);
             setTrainTooltipInfo(null);
             return;

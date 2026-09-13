@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { MercatorCoordinate } from "mapbox-gl";
+import { MercatorCoordinate } from "maplibre-gl";
 import type { FrameBudget, FrameHead, FrameTrail, TrackFrame } from "../gfw-v4-bench/types";
 
 export interface GfwV4ViewBounds {

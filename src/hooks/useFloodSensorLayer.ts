@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import type {
   Map as MapboxMap,
-  CircleLayer,
+  CircleLayerSpecification,
   GeoJSONSource,
   ExpressionSpecification,
-} from "mapbox-gl";
+} from "maplibre-gl";
 import {
   fetchFloodSensorDay,
   type FloodSensorDayRow,
@@ -119,7 +119,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-stroke-opacity": 0.25 * opacity,
         "circle-pitch-alignment": "map",
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
   if (!map.getLayer(LAYER_BUFFER_500)) {
     map.addLayer({
@@ -136,7 +136,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-stroke-opacity": 0.4 * opacity,
         "circle-pitch-alignment": "map",
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
   if (!map.getLayer(LAYER_GLOW)) {
     map.addLayer({
@@ -149,7 +149,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-blur": 0.7,
         "circle-opacity": (isDark ? 0.4 : 0.3) * opacity,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
   if (!map.getLayer(LAYER_DOT)) {
     map.addLayer({
@@ -164,7 +164,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-stroke-color": "#ffffff",
         "circle-stroke-opacity": 0.5 * opacity,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 }
 

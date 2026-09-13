@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap, CircleLayer, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, CircleLayerSpecification, GeoJSONSource } from "maplibre-gl";
 import { fetchAqiStationsAt, buildStationsGeoJSON } from "../data/aqiStationsLoader";
 import { buildAqiStepExpression } from "../map/aqiColorScale";
 import { timeStore } from "../state/timeStore";
@@ -45,7 +45,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean) {
         "circle-blur": 1,
         "circle-opacity": isDark ? 0.35 : 0.3,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 
   if (!map.getLayer(LAYER_CIRCLE)) {
@@ -63,7 +63,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean) {
         "circle-stroke-color": isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.5)",
         "circle-opacity": 0.95,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 }
 

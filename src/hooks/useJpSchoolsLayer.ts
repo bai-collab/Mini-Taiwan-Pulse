@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import type { CircleLayer, ExpressionSpecification, Map as MapboxMap } from "mapbox-gl";
+import type { CircleLayerSpecification, ExpressionSpecification, Map as MapboxMap } from "maplibre-gl";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { useMapReadyTick } from "./useMapReadyTick";
 import { JP_SCHOOL_TYPE_COLOR_EXPRESSION } from "../data/jpSchoolTypes";
 
@@ -29,10 +29,10 @@ function clampOpacity(opacity: number): number {
 
 function absoluteUrl(relativeFile: string): string {
   const relative = `${import.meta.env.BASE_URL ?? "/"}world/${relativeFile}`;
-  return new URL(relative, window.location.href).href;
+  return pmtilesUrl(relative);
 }
 
-function schoolsCircleLayer(opacity: number, scale: number): CircleLayer {
+function schoolsCircleLayer(opacity: number, scale: number): CircleLayerSpecification {
   return {
     id: LAYER_ID,
     type: "circle",
@@ -46,7 +46,7 @@ function schoolsCircleLayer(opacity: number, scale: number): CircleLayer {
       "circle-stroke-color": "rgba(15, 23, 42, 0.45)",
       "circle-stroke-width": 0.35,
     },
-  } as CircleLayer;
+  } as CircleLayerSpecification;
 }
 
 /** 日本學校：單一 PMTiles point 子層，按学校分類 13 色分色，靜態無時間維度。 */

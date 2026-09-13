@@ -51,24 +51,24 @@ describe("基本讀寫", () => {
     expect(store.getVisibility("earthquakes")).toBe(false);
     store.toggle("earthquakes");
     expect(store.getVisibility("earthquakes")).toBe(true);
-    expect(store.getVisibility("popCount")).toBe(false);
+    expect(store.getVisibility("countyBoundary")).toBe(false);
   });
 
   it("setBulk 只寫入 partial 提到的 key", () => {
-    store.setVisibility("popCount", true);
-    store.setBulk({ earthquakes: true, typhoonTracks: true });
+    store.setVisibility("countyBoundary", true);
+    store.setBulk({ earthquakes: true, contour25k: true });
     expect(store.getVisibility("earthquakes")).toBe(true);
-    expect(store.getVisibility("typhoonTracks")).toBe(true);
+    expect(store.getVisibility("contour25k")).toBe(true);
     // 沒被 partial 提到的維持原值
-    expect(store.getVisibility("popCount")).toBe(true);
+    expect(store.getVisibility("countyBoundary")).toBe(true);
   });
 
   it("setAll 整包取代（App 端 setLayerVisibility(obj) 的落點）", () => {
     store.setVisibility("earthquakes", true);
-    const next = { ...buildDefaultVisibility(), popCount: true };
+    const next = { ...buildDefaultVisibility(), countyBoundary: true };
     store.setAll(next);
     expect(store.getVisibility("earthquakes")).toBe(false);
-    expect(store.getVisibility("popCount")).toBe(true);
+    expect(store.getVisibility("countyBoundary")).toBe(true);
   });
 });
 
@@ -96,7 +96,7 @@ describe("snapshot identity（useSyncExternalStore 契約）", () => {
 
   it("沒有實際變動的 setBulk 不換 identity", () => {
     const before = store.getAll();
-    store.setBulk({ earthquakes: false, popCount: false });
+    store.setBulk({ earthquakes: false, countyBoundary: false });
     expect(store.getAll()).toBe(before);
   });
 
@@ -113,11 +113,11 @@ describe("全域訂閱 subscribe", () => {
     store.setVisibility("earthquakes", true);
     expect(cb).toHaveBeenCalledTimes(1);
 
-    store.setVisibility("popCount", true);
+    store.setVisibility("countyBoundary", true);
     expect(cb).toHaveBeenCalledTimes(2);
 
     // setBulk 改了 2 個 key，全域仍只通知一次
-    store.setBulk({ typhoonTracks: true, windField: true });
+    store.setBulk({ contour25k: true, hillshade: true });
     expect(cb).toHaveBeenCalledTimes(3);
 
     unsub();
@@ -151,13 +151,13 @@ describe("per-key 訂閱 subscribeKey", () => {
     const onEq = vi.fn();
     const onPop = vi.fn();
     store.subscribeKey("earthquakes", onEq);
-    store.subscribeKey("popCount", onPop);
+    store.subscribeKey("countyBoundary", onPop);
 
     store.setVisibility("earthquakes", true);
     expect(onEq).toHaveBeenCalledTimes(1);
     expect(onPop).not.toHaveBeenCalled();
 
-    store.setVisibility("popCount", true);
+    store.setVisibility("countyBoundary", true);
     expect(onEq).toHaveBeenCalledTimes(1);
     expect(onPop).toHaveBeenCalledTimes(1);
   });
@@ -167,10 +167,10 @@ describe("per-key 訂閱 subscribeKey", () => {
     const onEq = vi.fn();
     const onPop = vi.fn();
     store.subscribeKey("earthquakes", onEq);
-    store.subscribeKey("popCount", onPop);
+    store.subscribeKey("countyBoundary", onPop);
 
     // earthquakes 已是 true → 同值不通知；popCount 由 false→true → 通知
-    store.setBulk({ earthquakes: true, popCount: true });
+    store.setBulk({ earthquakes: true, countyBoundary: true });
     expect(onEq).not.toHaveBeenCalled();
     expect(onPop).toHaveBeenCalledTimes(1);
   });
@@ -179,9 +179,9 @@ describe("per-key 訂閱 subscribeKey", () => {
     const onEq = vi.fn();
     const onPop = vi.fn();
     store.subscribeKey("earthquakes", onEq);
-    store.subscribeKey("popCount", onPop);
+    store.subscribeKey("countyBoundary", onPop);
 
-    store.setAll({ ...buildDefaultVisibility(), popCount: true });
+    store.setAll({ ...buildDefaultVisibility(), countyBoundary: true });
     expect(onEq).not.toHaveBeenCalled();
     expect(onPop).toHaveBeenCalledTimes(1);
   });
@@ -212,7 +212,7 @@ describe("bridge 等價性（模擬 App 端既有寫入路徑）", () => {
   }
 
   it("All Off 後全部關閉；再按一次 All Off 完全沒有通知（空轉不 re-render）", () => {
-    store.setBulk({ earthquakes: true, popCount: true });
+    store.setBulk({ earthquakes: true, countyBoundary: true });
     allOff();
     const all = store.getAll();
     expect((Object.keys(all) as (keyof LayerVisibility)[]).every((k) => !all[k])).toBe(true);
@@ -226,19 +226,19 @@ describe("bridge 等價性（模擬 App 端既有寫入路徑）", () => {
 
   /** App.tsx 歷史模式：snapshot → 全關 → 還原 */
   it("歷史模式 snapshot / 還原往返後狀態一致", () => {
-    store.setBulk({ earthquakes: true, typhoonTracks: true });
+    store.setBulk({ earthquakes: true, contour25k: true });
     const snapshotBefore = store.getAll();
 
     const allOffObj = { ...snapshotBefore };
     for (const k in allOffObj) allOffObj[k as keyof LayerVisibility] = false;
-    store.setAll({ ...allOffObj, popCount: true });
+    store.setAll({ ...allOffObj, countyBoundary: true });
     expect(store.getVisibility("earthquakes")).toBe(false);
-    expect(store.getVisibility("popCount")).toBe(true);
+    expect(store.getVisibility("countyBoundary")).toBe(true);
 
     store.setAll(snapshotBefore);
     expect(store.getVisibility("earthquakes")).toBe(true);
-    expect(store.getVisibility("typhoonTracks")).toBe(true);
-    expect(store.getVisibility("popCount")).toBe(false);
+    expect(store.getVisibility("contour25k")).toBe(true);
+    expect(store.getVisibility("countyBoundary")).toBe(false);
   });
 
   /** App.tsx 常見的 updater 寫法：`setLayerVisibility(prev => ({ ...prev, [k]: true }))` */
@@ -253,7 +253,7 @@ describe("bridge 等價性（模擬 App 端既有寫入路徑）", () => {
   });
 
   it("reset 回到預設全關", () => {
-    store.setBulk({ earthquakes: true, popCount: true });
+    store.setBulk({ earthquakes: true, countyBoundary: true });
     store.reset();
     expect(store.getAll()).toEqual(buildDefaultVisibility());
   });

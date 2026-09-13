@@ -5,14 +5,14 @@
 // 部署：public/agriculture/*.pmtiles | *.geojson  (HTTP Range Request for PMTiles)
 
 
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { agriPOIMatchColorExpr } from "../data/agriPOITypes";
 import {
   SOIL_FERTILITY_METRICS,
   type SoilFertilityMetric,
 } from "../data/agriSoilFertilityMetrics";
 // PMTiles SourceType 註冊統一走 pmtilesSourceType.ts（所有 PMTiles 圖層共用）
-import { registerPmtilesSourceTypeOnce } from "./pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "./pmtilesSourceType";
 import { PMTILES_SOURCE_TYPE } from "./pmtilesConstants";
 import { loadingRegistry } from "../lib/loadingRegistry";
 
@@ -28,7 +28,7 @@ function addPmtilesSourceIfMissing(
   if (map.getSource(sourceId)) return;
   map.addSource(sourceId, {
     type: PMTILES_SOURCE_TYPE,
-    url: `${BASE}/${fileName}`,
+    url: pmtilesUrl(`${BASE}/${fileName}`),
     minzoom,
     maxzoom,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

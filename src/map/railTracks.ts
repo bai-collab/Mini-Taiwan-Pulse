@@ -1,4 +1,4 @@
-import type { Map as MapboxMap, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource } from "maplibre-gl";
 
 const SOURCE_ID = "rail-tracks";
 const LAYER_ID = "rail-tracks-line";

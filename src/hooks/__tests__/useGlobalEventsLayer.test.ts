@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import type { RefObject } from "react";
 import type { GlobalEventPoint } from "../../data/globalEventsLoader";
 

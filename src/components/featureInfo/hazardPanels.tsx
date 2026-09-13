@@ -89,6 +89,7 @@ export function MountainRescuePanel({ props }: { props: Record<string, unknown> 
         </div>
       </div>
       <Row label="案件編號" value={String(props.case_id ?? "—")} />
+      <Row label="涵蓋範圍" value="全台" />
       <Row label="年份" value={props.year == null ? "—" : String(props.year)} />
       <Row label="縣市" value={String(props.city ?? "—")} />
       {area ? <Row label="山域" value={area} /> : null}
@@ -189,6 +190,7 @@ export function EarthquakePanel({ props }: { props: Record<string, unknown> }) {
   return (
     <div>
       <Row label="規模 (M)" value={mag != null ? `M ${mag.toFixed(1)}` : "—"} color={magColor} />
+      <Row label="涵蓋範圍" value="全台" />
       <Row label="深度" value={depth != null ? `${depth.toFixed(1)} km` : "—"} color={dColor} />
       <Row label="發生時間" value={fmtTimeTaipei(props.occurred_ts)} />
       <Row label="震央位置" value={String(props.location_desc || "—")} />

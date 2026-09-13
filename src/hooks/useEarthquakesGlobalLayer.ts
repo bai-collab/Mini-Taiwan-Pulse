@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import type {
-  Map as MapboxMap, ExpressionSpecification, FilterSpecification, CircleLayer, GeoJSONSource,
-} from "mapbox-gl";
+  Map as MapboxMap, ExpressionSpecification, FilterSpecification, CircleLayerSpecification, GeoJSONSource,
+} from "maplibre-gl";
 import { timeStore } from "../state/timeStore";
 import { useMapReadyTick } from "./useMapReadyTick";
 import {
@@ -95,7 +95,7 @@ function buildLayers(map: MapboxMap) {
         "circle-stroke-width": 1,
         "circle-stroke-opacity": POST_STROKE_OPACITY,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 
   // pre：即將發生的預示（空心）
@@ -112,7 +112,7 @@ function buildLayers(map: MapboxMap) {
         "circle-stroke-width": 1,
         "circle-stroke-opacity": PRE_STROKE_OPACITY,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 
   // ripple：半徑／透明度由 RAF 每幀改寫（見下方動畫 effect）
@@ -130,7 +130,7 @@ function buildLayers(map: MapboxMap) {
         "circle-stroke-width": 2,
         "circle-stroke-opacity": 0,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 
   return true;

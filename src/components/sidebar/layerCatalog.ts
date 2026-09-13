@@ -31,6 +31,7 @@ import {
   LAYER_MANIFEST, manifestColors,
   type ManifestKey, type LayerManifestEntry,
 } from "../../data/layerManifest";
+import { trimmedPulseLayerAllowlist } from "../../config/trimmedPulseConfig";
 
 /**
  * 手寫色票殘量 —— **AR-22 Phase 2 完成後為空**（348/348 全部由 layerManifest 派生）。
@@ -1788,6 +1789,28 @@ const MACRO_GROUP_ORDER = new Map(
 export const THEMES: ThemeDef[] = [...THEME_CATALOG].sort(
   (a, b) => MACRO_GROUP_ORDER.get(themeMacroGroup(a.title))! - MACRO_GROUP_ORDER.get(themeMacroGroup(b.title))!,
 );
+
+/** FullPulseApp 使用的五大主題；完整 THEMES 保留給 manifest／一致性檢查與其他 surface。 */
+export const TRIMMED_PULSE_THEME_TITLES = [
+  "底圖 Base Map",
+  "交通 Move",
+  "災害 Hazard",
+  "環境氣候 Environment",
+  "水資源 Water",
+] as const;
+
+export const TRIMMED_PULSE_THEMES: ThemeDef[] = THEMES
+  .filter((theme) => (TRIMMED_PULSE_THEME_TITLES as readonly string[]).includes(theme.title))
+  .map((theme) => ({
+    ...theme,
+    groups: theme.groups
+      .map((group) => ({
+        ...group,
+        layers: group.layers.filter((layer) => trimmedPulseLayerAllowlist.has(layer.key)),
+      }))
+      .filter((group) => group.layers.length > 0),
+  }))
+  .filter((theme) => theme.groups.length > 0);
 
 // ── SECTIONS（derived flat — backward compat for 兩個 sidebar 元件）──
 // 每個 SubGroup 攤平為一筆 SectionDef，title = `主題 English · 子群中文`，

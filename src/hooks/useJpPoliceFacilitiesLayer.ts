@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { CircleLayer, ExpressionSpecification, FilterSpecification, Map as MapboxMap } from "mapbox-gl";
+import type { CircleLayerSpecification, ExpressionSpecification, FilterSpecification, Map as MapboxMap } from "maplibre-gl";
 import {
   JP_POLICE_ATTRIBUTION,
   JP_POLICE_DEGRADED_COLOR,
@@ -8,7 +8,7 @@ import {
 } from "../data/jpPoliceFacilityTypes";
 import { keepLoadingUntilMapIdle } from "../lib/loadingRegistry";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { useMapReadyTick } from "./useMapReadyTick";
 
 const SOURCE_ID = "jp-police-facilities";
@@ -34,7 +34,7 @@ function scaledRadius(scale: number): ExpressionSpecification {
 
 function absoluteUrl(relativeFile: string): string {
   const relative = `${import.meta.env.BASE_URL ?? "/"}world/${relativeFile}`;
-  return new URL(relative, window.location.href).href;
+  return pmtilesUrl(relative);
 }
 
 /** 0=全部；1–4 依 `JP_POLICE_FACILITY_TYPES` 順序選取一種設施。無效 index fail closed。 */
@@ -51,7 +51,7 @@ export function jpPoliceFacilityInitialFilter(typeIndex: number): FilterSpecific
   return jpPoliceFacilityTypeFilter(typeIndex) ?? undefined;
 }
 
-function policeCircleLayer(opacity: number, scale: number, typeIndex: number): CircleLayer {
+function policeCircleLayer(opacity: number, scale: number, typeIndex: number): CircleLayerSpecification {
   const initialFilter = jpPoliceFacilityInitialFilter(typeIndex);
   return {
     id: LAYER_ID,
@@ -74,7 +74,7 @@ function policeCircleLayer(opacity: number, scale: number, typeIndex: number): C
       ] as unknown as ExpressionSpecification,
       "circle-stroke-opacity": clampOpacity(opacity),
     },
-  } as CircleLayer;
+  } as CircleLayerSpecification;
 }
 
 /** 日本警察設施：靜態 PMTiles 點層，z15+ overzoom z14；typeIndex 0=全部、1–4=設施類別。 */

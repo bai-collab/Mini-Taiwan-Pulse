@@ -4,9 +4,10 @@ import { regionalStatisticsStore } from '../state/regionalStatisticsStore';
 import { layerVisibilityStore } from '../state/layerVisibilityStore';
 import { layerParamsStore } from '../state/layerParamsStore';
 import { keepLoadingUntilMapIdle } from '../lib/loadingRegistry';
+import type { ExpressionSpecification, GeoJSONSource, Map as MaplibreMap } from 'maplibre-gl';
 
 /** Owns only statistics sources/layers; other GIS visibility is untouched. */
-export function attachRegionalStatistics(map: mapboxgl.Map): () => void {
+export function attachRegionalStatistics(map: MaplibreMap): () => void {
   const shown = new Map<StatisticsLayerKey, boolean>();
   const rendered = new Map<StatisticsLayerKey, GeoJSON.FeatureCollection>();
   for (const key of STATISTICS_KEYS) {
@@ -36,7 +37,7 @@ export function attachRegionalStatistics(map: mapboxgl.Map): () => void {
         const step: unknown[] = ['step', ['get', 'value'], recipe.colors[0]];
         recipe.breaks.forEach((value, index) => step.push(value, recipe.colors[index + 1]));
         map.addLayer({ id: `${key}-fill`, type: 'fill', source: key, layout: { visibility: 'none' }, paint: {
-          'fill-color': ['case', ['all', ['==', ['get', 'status'], 'observed'], ['!=', ['get', 'value'], null]], step, agri?.legend.missing_color ?? '#64748b'] as mapboxgl.ExpressionSpecification,
+          'fill-color': ['case', ['all', ['==', ['get', 'status'], 'observed'], ['!=', ['get', 'value'], null]], step, agri?.legend.missing_color ?? '#64748b'] as unknown as ExpressionSpecification,
           'fill-opacity': 0.55,
         } });
         if (agri) map.addLayer({ id: `${key}-suppressed`, type: 'fill', source: key, filter: ['==', ['get', 'status'], 'suppressed'], layout: { visibility: 'none' }, paint: { 'fill-pattern': hatchId, 'fill-opacity': 0.55 } });
@@ -45,11 +46,11 @@ export function attachRegionalStatistics(map: mapboxgl.Map): () => void {
       const data = state.data;
       if (data && rendered.get(key) !== data) {
         rendered.set(key, data);
-        (map.getSource(key) as mapboxgl.GeoJSONSource).setData(data);
+        (map.getSource(key) as GeoJSONSource).setData(data);
         keepLoadingUntilMapIdle(map, `statistics-render:${key}`, recipe.label, key);
       } else if (!data && rendered.has(key)) {
         rendered.delete(key);
-        (map.getSource(key) as mapboxgl.GeoJSONSource).setData({ type: 'FeatureCollection', features: [] });
+        (map.getSource(key) as GeoJSONSource).setData({ type: 'FeatureCollection', features: [] });
       }
       for (const suffix of agri ? ['fill', 'line', 'suppressed'] : ['fill', 'line']) map.setLayoutProperty(`${key}-${suffix}`, 'visibility', visible && data ? 'visible' : 'none');
       const opacity = Number(layerParamsStore.getParam(key, `${key}Opacity`) ?? 0.55);

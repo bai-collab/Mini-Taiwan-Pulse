@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import type { FillLayer, Map as MapboxMap } from "mapbox-gl";
+import type { FillLayerSpecification, Map as MapboxMap } from "maplibre-gl";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { useMapReadyTick } from "./useMapReadyTick";
 import { jpPopulationMeshFillColor } from "../data/jpPopulationMeshModes";
 
@@ -20,12 +20,12 @@ function clampOpacity(opacity: number): number {
 
 function absoluteUrl(relativeFile: string): string {
   const relative = `${import.meta.env.BASE_URL ?? "/"}world/${relativeFile}`;
-  return new URL(relative, window.location.href).href;
+  return pmtilesUrl(relative);
 }
 
 // outline 0：176,896 格 1km 網格，畫框線會糊成一片灰、也吃掉 choropleth 的顏色辨識度
 // （見 handoff 對本層的 UX 指定）→ 只加 fill 子層，不加 line 子層。
-function meshFillLayer(opacity: number, modeIdx: number): FillLayer {
+function meshFillLayer(opacity: number, modeIdx: number): FillLayerSpecification {
   return {
     id: LAYER_ID,
     type: "fill",
@@ -36,7 +36,7 @@ function meshFillLayer(opacity: number, modeIdx: number): FillLayer {
       "fill-color": jpPopulationMeshFillColor(modeIdx),
       "fill-opacity": clampOpacity(opacity),
     },
-  } as FillLayer;
+  } as FillLayerSpecification;
 }
 
 /**

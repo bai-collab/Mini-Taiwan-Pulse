@@ -27,10 +27,12 @@ import { useLayerParams } from "../state/layerParamsStore";
 import type { DataRegistry } from "../hooks/useDataRegistry";
 import { ALL_PRESETS } from "../map/cameraPresets";
 // 圖層目錄常數單一真實來源（與 LayerSidebar 共用，消除漂移）
-import { LAYER_COLORS, LAYER_MACRO_GROUPS, TRANSPORT_LABELS, THEMES, WORLD_TAB_THEME_TITLES, JAPAN_TAB_THEME_TITLES, STATISTICS_TAB_THEMES, themeMacroGroup, type ThemeDef } from "./sidebar/layerCatalog";
+import { LAYER_COLORS, LAYER_MACRO_GROUPS, TRANSPORT_LABELS, THEMES, TRIMMED_PULSE_THEMES, WORLD_TAB_THEME_TITLES, JAPAN_TAB_THEME_TITLES, STATISTICS_TAB_THEMES, themeMacroGroup, type ThemeDef } from "./sidebar/layerCatalog";
 import { manifestIcons, type ManifestKey } from "../data/layerManifest";
 import { MONITOR_SPLIT_DOCK } from "./intel/monitor/monitorSplitLayout";
 import { searchLayers } from "../lib/layerSearch";
+import { trimmedPulseUi } from "../config/trimmedPulseConfig";
+import { TrimmedLayerMeta } from "./sidebar/TrimmedLayerMeta";
 
 // 「世界」rail tab 與桌機主 Layers panel 的主題分流：
 // - 主 Layers panel 只渲染非世界 tab 主題（MAIN_THEMES）
@@ -39,7 +41,7 @@ const WORLD_THEMES = THEMES.filter((t) => WORLD_TAB_THEME_TITLES.includes(t.titl
   .sort((a, b) => WORLD_TAB_THEME_TITLES.indexOf(a.title) - WORLD_TAB_THEME_TITLES.indexOf(b.title));
 const JAPAN_THEMES = THEMES.filter((t) => JAPAN_TAB_THEME_TITLES.includes(t.title))
   .sort((a, b) => JAPAN_TAB_THEME_TITLES.indexOf(a.title) - JAPAN_TAB_THEME_TITLES.indexOf(b.title));
-const MAIN_THEMES = THEMES.filter((t) => !WORLD_TAB_THEME_TITLES.includes(t.title) && !JAPAN_TAB_THEME_TITLES.includes(t.title) && !t.title.endsWith("Statistics"));
+const MAIN_THEMES = TRIMMED_PULSE_THEMES;
 
 // ── Color Config ──
 
@@ -74,6 +76,8 @@ interface IconRailSidebarProps {
   viewMode: ViewMode;
   displayMode: DisplayMode;
   counts: { flights: number; ships: number; trains: number; buses: number; busesIntercity?: number; wasteTrucks?: number; windPlan?: number };
+  /** 逐層狀態徽章的 loading 訊號（目前僅交通層有可靠訊號）。 */
+  loading?: { flights?: boolean; ships?: boolean; rail?: boolean };
   onLayerClick: (layer: keyof LayerVisibility) => void;
   onToggleVisibility: (layer: keyof LayerVisibility) => void;
   onViewModeChange: (mode: ViewMode) => void;
@@ -163,7 +167,7 @@ export function getThemeLayerKeys(themes: ThemeDef[]): (keyof LayerVisibility)[]
 
 export function IconRailSidebar({
   visibility, lockedKeys, expandedLayer, viewMode, displayMode,
-  counts, onLayerClick, onToggleVisibility,
+  counts, loading, onLayerClick, onToggleVisibility,
   onViewModeChange, onDisplayModeChange, onHideTransport, onAllOff,
   onBulkSetVisibility,
   currentLocationId, onLocationJump, onWidthChange,
@@ -246,6 +250,15 @@ export function IconRailSidebar({
     }
   };
 
+  const getLoading = (key: keyof LayerVisibility): boolean => {
+    switch (key) {
+      case "flights": return !!loading?.flights;
+      case "ships": return !!loading?.ships;
+      case "rail": return !!loading?.rail;
+      default: return false;
+    }
+  };
+
   // Filter presets
   const overviewPresets = useMemo(() => ALL_PRESETS.filter((p) => p.category === "overview"), []);
   const cityPresets = useMemo(() => ALL_PRESETS.filter((p) => p.category === "city"), []);
@@ -298,6 +311,7 @@ export function IconRailSidebar({
         {/* 統計 Statistics：獨立功能入口，共用既有圖層開關狀態 */}
         <RailIcon
           icon={StatisticsGlyph}
+          hidden={!trimmedPulseUi.showStatistics}
           active={activePanel === "statistics"}
           onClick={() => togglePanel("statistics")}
           tooltip="統計 Statistics"
@@ -306,6 +320,7 @@ export function IconRailSidebar({
         {/* 🌍 世界 World（維持獨立 rail，排在 Layers 之後） */}
         <RailIcon
           icon={WorldGlyph}
+          hidden={!trimmedPulseUi.showWorld}
           active={activePanel === "world"}
           onClick={() => togglePanel("world")}
           tooltip="世界 World"
@@ -314,6 +329,7 @@ export function IconRailSidebar({
         {/* 🗾 日本 Japan（clone 世界 tab；打開自動飛日本） */}
         <RailIcon
           icon={JapanGlyph}
+          hidden={!trimmedPulseUi.showJapan}
           active={activePanel === "japan"}
           onClick={() => togglePanel("japan")}
           tooltip="日本 Japan"
@@ -328,7 +344,7 @@ export function IconRailSidebar({
         />
 
         {/* 即時情報 Intel */}
-        {onIntelToggle && (
+        {trimmedPulseUi.showIntel && onIntelToggle && (
           <RailIcon
             icon={Radio}
             active={!!intelActive}
@@ -341,7 +357,7 @@ export function IconRailSidebar({
         )}
 
         {/* 衛星情報 Satellite Console */}
-        {onSatelliteToggle && (
+        {trimmedPulseUi.showSatellite && onSatelliteToggle && (
           <RailIcon
             icon={Satellite}
             active={!!satelliteActive}
@@ -354,7 +370,7 @@ export function IconRailSidebar({
         )}
 
         {/* 🏢 房地產總市值 Property Value（縣市長條圖面板） */}
-        {onPropertyValueToggle && (
+        {trimmedPulseUi.showPropertyValue && onPropertyValueToggle && (
           <RailIcon
             icon={PiggyBank}
             active={!!propertyValueActive}
@@ -367,7 +383,7 @@ export function IconRailSidebar({
         )}
 
         {/* 監測模式 Monitor split（右半邊） */}
-        {onMonitorSplitToggle && (
+        {trimmedPulseUi.showMonitor && onMonitorSplitToggle && (
           <RailIcon
             icon={PanelRight}
             active={!!monitorSplitActive}
@@ -376,7 +392,7 @@ export function IconRailSidebar({
           />
         )}
 
-        {onMemberToggle && (
+        {trimmedPulseUi.showMember && onMemberToggle && (
           <RailIcon
             icon={User}
             active={!!memberActive}
@@ -450,13 +466,14 @@ export function IconRailSidebar({
                 search={layerSearch}
                 onSearchChange={setLayerSearch}
                 themes={MAIN_THEMES}
-                showMacroGroups
+                showMacroGroups={false}
                 visibility={visibility}
                 lockedKeys={lockedKeys}
                 expandedLayer={expandedLayer}
                 viewMode={viewMode}
                 displayMode={displayMode}
                 getCount={getCount}
+                getLoading={getLoading}
                 onLayerClick={onLayerClick}
                 onToggleVisibility={onToggleVisibility}
                 onViewModeChange={onViewModeChange}
@@ -469,7 +486,7 @@ export function IconRailSidebar({
                 onClose={closePanel}
               />
             )}
-            {activePanel === "world" && (
+            {trimmedPulseUi.showWorld && activePanel === "world" && (
               <LayersPanel
                 search={worldSearch}
                 onSearchChange={setWorldSearch}
@@ -481,6 +498,7 @@ export function IconRailSidebar({
                 viewMode={viewMode}
                 displayMode={displayMode}
                 getCount={getCount}
+                getLoading={getLoading}
                 onLayerClick={onLayerClick}
                 onToggleVisibility={onToggleVisibility}
                 onViewModeChange={onViewModeChange}
@@ -493,7 +511,7 @@ export function IconRailSidebar({
                 onClose={closePanel}
               />
             )}
-            {activePanel === "statistics" && (
+            {trimmedPulseUi.showStatistics && activePanel === "statistics" && (
               <LayersPanel
                 search={statisticsSearch}
                 onSearchChange={setStatisticsSearch}
@@ -507,6 +525,7 @@ export function IconRailSidebar({
                 viewMode={viewMode}
                 displayMode={displayMode}
                 getCount={getCount}
+                getLoading={getLoading}
                 onLayerClick={onLayerClick}
                 onToggleVisibility={onToggleVisibility}
                 onViewModeChange={onViewModeChange}
@@ -519,7 +538,7 @@ export function IconRailSidebar({
                 onClose={closePanel}
               />
             )}
-            {activePanel === "japan" && (
+            {trimmedPulseUi.showJapan && activePanel === "japan" && (
               <LayersPanel
                 search={japanSearch}
                 onSearchChange={setJapanSearch}
@@ -531,6 +550,7 @@ export function IconRailSidebar({
                 viewMode={viewMode}
                 displayMode={displayMode}
                 getCount={getCount}
+                getLoading={getLoading}
                 onLayerClick={onLayerClick}
                 onToggleVisibility={onToggleVisibility}
                 onViewModeChange={onViewModeChange}
@@ -623,13 +643,15 @@ function JapanGlyph({ size = 20 }: { size?: number }) {
 }
 
 function RailIcon({
-  icon: Icon, active, onClick, tooltip, badge,
+  icon: Icon, active, onClick, tooltip, badge, hidden = false,
 }: {
   icon: ComponentType<{ size?: number }>; active: boolean; onClick: () => void; tooltip: string;
+  hidden?: boolean;
   /** 右上角紅底白字「!」提示圓點（引導點擊；點開後由呼叫端關閉） */
   badge?: boolean;
 }) {
   const { ACCENT, DIM, RAIL_ICON_ACTIVE } = useRailTheme();
+  if (hidden) return null;
   return (
     <button
       onClick={onClick}
@@ -779,6 +801,7 @@ interface LayersPanelProps {
   viewMode: ViewMode;
   displayMode: DisplayMode;
   getCount: (key: keyof LayerVisibility) => number | undefined;
+  getLoading?: (key: keyof LayerVisibility) => boolean;
   onLayerClick: (layer: keyof LayerVisibility) => void;
   onToggleVisibility: (layer: keyof LayerVisibility) => void;
   onViewModeChange: (mode: ViewMode) => void;
@@ -806,6 +829,7 @@ interface LayerRowProps {
   locked: boolean;
   color: string;
   count: number | undefined;
+  loading?: boolean;
   isExpanded: boolean;
   Icon: LucideIcon;
   onLayerClick: (layer: keyof LayerVisibility) => void;
@@ -813,7 +837,7 @@ interface LayerRowProps {
 }
 
 const LayerRow = memo(function LayerRow({
-  layerKey, label, expandable, active, locked, color, count, isExpanded, Icon,
+  layerKey, label, expandable, active, locked, color, count, loading, isExpanded, Icon,
   onLayerClick, onToggleVisibility,
 }: LayerRowProps) {
   const { DIM, INACTIVE_TEXT, TEXT_STRONG, ROW_HOVER } = useRailTheme();
@@ -846,16 +870,19 @@ const LayerRow = memo(function LayerRow({
       }}
     >
       <Icon size={14} color={active ? color : DIM} style={{ flexShrink: 0 }} />
-      <span
-        style={{
-          flex: 1,
-          fontSize: FONT_SIZE.md,
-          fontFamily: "Inter, system-ui, sans-serif",
-          color: active ? TEXT_STRONG : INACTIVE_TEXT,
-          transition: "color 0.15s",
-        }}
-      >
-        {label}
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span
+          style={{
+            display: "block",
+            fontSize: FONT_SIZE.md,
+            fontFamily: "Inter, system-ui, sans-serif",
+            color: active ? TEXT_STRONG : INACTIVE_TEXT,
+            transition: "color 0.15s",
+          }}
+        >
+          {label}
+        </span>
+        <TrimmedLayerMeta layerKey={layerKey} color={color} active={active} count={count} loading={loading} locked={locked} />
       </span>
       {count != null && count > 0 && !locked && (
         <span
@@ -990,7 +1017,7 @@ function LayersPanel({
   search, onSearchChange, themes, title = "Layers",
   showMacroGroups = false,
   visibility, lockedKeys, expandedLayer, viewMode: _viewMode, displayMode,
-  getCount, onLayerClick, onToggleVisibility,
+  getCount, getLoading, onLayerClick, onToggleVisibility,
   onViewModeChange: _onViewModeChange, onDisplayModeChange, onHideTransport,
   onAllOff, onBulkSetVisibility, onClose,
   favoriteKeys, onToggleFavorite, allOffKeys,
@@ -998,7 +1025,7 @@ function LayersPanel({
 }: LayersPanelProps) {
   const { ALLOFF_BG, ALLOFF_BORDER, INACTIVE_TEXT, SEARCH_BG, DIM, TEXT_STRONG } = useRailTheme();
   const q = search.trim().toLowerCase();
-  const themesToRender = themes ?? THEMES;
+  const themesToRender = themes ?? TRIMMED_PULSE_THEMES;
   const searchContext = useMemo(() => {
     const context = new Map<string, string>();
     for (const theme of themesToRender) {
@@ -1114,6 +1141,7 @@ function LayersPanel({
                     {result.label}{locked && <Lock size={12} color={DIM} />}
                   </div>
                   <div style={{ marginTop: 2, color: INACTIVE_TEXT, fontSize: FONT_SIZE.base, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{result.description}</div>
+                  <TrimmedLayerMeta layerKey={result.key} color={LAYER_COLORS[result.key]} compact />
                   <div style={{ marginTop: 2, color: DIM, fontSize: FONT_SIZE.xs, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>主題：{result.topics.join("、")} · {result.source}</div>
                 </button>
                 {onToggleFavorite && (
@@ -1184,6 +1212,7 @@ function LayersPanel({
                           locked={!!lockedKeys?.has(key)}
                           color={LAYER_COLORS[key]}
                           count={getCount(key)}
+                          loading={getLoading?.(key)}
                           isExpanded={isExpanded}
                           Icon={LAYER_ICONS[key]}
                           onLayerClick={onLayerClick}

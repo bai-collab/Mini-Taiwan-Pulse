@@ -2,11 +2,11 @@ import { useEffect, useRef, useCallback, useState } from "react";
 import type {
   Map as MapboxMap,
   GeoJSONSource,
-  CircleLayer,
-  FillLayer,
-  LineLayer,
+  CircleLayerSpecification,
+  FillLayerSpecification,
+  LineLayerSpecification,
   ExpressionSpecification,
-} from "mapbox-gl";
+} from "maplibre-gl";
 import * as satellite from "satellite.js";
 import { loadSatellites } from "../data/satelliteLoader";
 import {
@@ -196,7 +196,7 @@ export function useSatellitesLayer(
           "line-opacity": 0.35,
           "line-dasharray": [3, 3],
         },
-      } as LineLayer);
+      } as LineLayerSpecification);
     }
     if (!map.getLayer(SAT_LAYER_FOOTPRINT_INNER)) {
       map.addLayer({
@@ -209,7 +209,7 @@ export function useSatellitesLayer(
           "fill-opacity": 0.35,
           "fill-outline-color": COLOR_EXPR,
         },
-      } as FillLayer);
+      } as FillLayerSpecification);
     }
     if (!map.getLayer(SAT_LAYER_TRACK)) {
       map.addLayer({
@@ -221,7 +221,7 @@ export function useSatellitesLayer(
           "line-width": 1.4,
           "line-opacity": 0.5,
         },
-      } as LineLayer);
+      } as LineLayerSpecification);
     }
     if (!map.getLayer(SAT_LAYER_POINT)) {
       map.addLayer({
@@ -247,7 +247,7 @@ export function useSatellitesLayer(
           ],
           "circle-stroke-opacity": 0.85,
         },
-      } as CircleLayer);
+      } as CircleLayerSpecification);
     }
     // 變軌 pulse ring（red glow）
     const SAT_LAYER_MANEUVER_RING = "sat-maneuver-ring";
@@ -264,7 +264,7 @@ export function useSatellitesLayer(
           "circle-stroke-width": 1.5,
           "circle-stroke-opacity": 0.65,
         },
-      } as CircleLayer);
+      } as CircleLayerSpecification);
     }
     layersReadyRef.current = true;
     return true;

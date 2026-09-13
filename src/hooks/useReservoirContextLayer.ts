@@ -2,10 +2,10 @@ import { useEffect, useState } from "react";
 import { useMapReadyTick } from "./useMapReadyTick";
 import type {
   Map as MapboxMap,
-  FillLayer,
-  LineLayer,
+  FillLayerSpecification,
+  LineLayerSpecification,
   GeoJSONSource,
-} from "mapbox-gl";
+} from "maplibre-gl";
 import {
   fetchReservoirContext,
   fetchReservoirWatershedRivers,
@@ -72,7 +72,7 @@ function ensureLayers(map: MapboxMap) {
         "line-blur": 4,
         "line-opacity": 0.35,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
   if (!map.getLayer(L_NETWORK_LINE)) {
     map.addLayer({
@@ -85,7 +85,7 @@ function ensureLayers(map: MapboxMap) {
         "line-width": 1.2,
         "line-opacity": 0.85,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
   if (!map.getLayer(L_WATERSHED_FILL)) {
     map.addLayer({
@@ -96,7 +96,7 @@ function ensureLayers(map: MapboxMap) {
         "fill-color": COLOR_WATERSHED,
         "fill-opacity": 0.12,
       },
-    } as FillLayer);
+    } as FillLayerSpecification);
   }
   if (!map.getLayer(L_WATERSHED_LINE)) {
     map.addLayer({
@@ -109,7 +109,7 @@ function ensureLayers(map: MapboxMap) {
         "line-width": 2.2,
         "line-opacity": 0.85,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
   if (!map.getLayer(L_BASIN_LINE)) {
     map.addLayer({
@@ -123,7 +123,7 @@ function ensureLayers(map: MapboxMap) {
         "line-opacity": 0.6,
         "line-dasharray": [3, 2],
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
   if (!map.getLayer(L_RIVER_GLOW)) {
     map.addLayer({
@@ -137,7 +137,7 @@ function ensureLayers(map: MapboxMap) {
         "line-blur": 6,
         "line-opacity": 0.35,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
   if (!map.getLayer(L_RIVER_LINE)) {
     map.addLayer({
@@ -150,7 +150,7 @@ function ensureLayers(map: MapboxMap) {
         "line-width": 2.6,
         "line-opacity": 0.95,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
 }
 

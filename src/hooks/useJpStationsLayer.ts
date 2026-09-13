@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { CircleLayer, ExpressionSpecification, Map as MapboxMap } from "mapbox-gl";
+import type { CircleLayerSpecification, ExpressionSpecification, Map as MapboxMap } from "maplibre-gl";
 import { fetchJpStations } from "../data/jpStationsLoader";
 import { JP_STATION_TYPE_COLOR_EXPRESSION, JP_STATION_PAX_COLOR_EXPRESSION } from "../data/jpStationTypes";
 import { useMapReadyTick } from "./useMapReadyTick";
@@ -23,7 +23,7 @@ function colorExpression(colorMode: "type" | "ridership"): ExpressionSpecificati
   return colorMode === "ridership" ? JP_STATION_PAX_COLOR_EXPRESSION : JP_STATION_TYPE_COLOR_EXPRESSION;
 }
 
-function circleLayer(radius: ExpressionSpecification, opacity: number, colorMode: "type" | "ridership"): CircleLayer {
+function circleLayer(radius: ExpressionSpecification, opacity: number, colorMode: "type" | "ridership"): CircleLayerSpecification {
   return {
     id: LAYER_ID,
     type: "circle",
@@ -36,7 +36,7 @@ function circleLayer(radius: ExpressionSpecification, opacity: number, colorMode
       "circle-stroke-color": "rgba(15, 23, 42, 0.45)",
       "circle-stroke-width": 0.35,
     },
-  } as CircleLayer;
+  } as CircleLayerSpecification;
 }
 
 /** 日本車站（GeoJSON circle，lazy fetch）：source `jp-stations`、layer `jp-stations-circle`。 */

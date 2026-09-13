@@ -5,12 +5,11 @@
  * refresh Authorization headers.  This source replaces that instance before Mapbox
  * calls `load()`.  Do not register it for public PMTiles sources.
  */
-import mapboxgl from "mapbox-gl";
+import maplibregl from "maplibre-gl";
+import type { GetResourceResponse } from "maplibre-gl";
 import { PMTiles, Protocol, type RangeResponse, type Source } from "pmtiles";
-// @ts-expect-error mapbox-pmtiles does not ship declarations for its ESM build.
-import { PmTilesSource } from "mapbox-pmtiles/dist/mapbox-pmtiles.js";
 
-export const PRIVATE_CORAL_PMTILES_SOURCE_TYPE = "private-coral-pmtile-source";
+export const PRIVATE_CORAL_PMTILES_SOURCE_TYPE = "vector";
 export const MAX_PRIVATE_CORAL_RANGE_BYTES = 8 * 1024 * 1024;
 export const PRIVATE_CORAL_REQUEST_TIMEOUT_MS = 30_000;
 
@@ -148,47 +147,62 @@ export class PrivateCoralFetchSource implements Source {
   }
 }
 
-type PmTilesInternals = { _instance: PMTiles; _protocol: Protocol };
+type PrivateProtocolEntry = {
+  source: PrivateCoralFetchSource;
+  protocol: Protocol;
+};
 
-class PrivateCoralPmTilesSource extends PmTilesSource {
-  private readonly privateFetchSource: PrivateCoralFetchSource;
+const privateProtocolEntries = new Map<string, PrivateProtocolEntry>();
+let privateProtocolRegistered = false;
+let privateProtocolSequence = 0;
 
-  constructor(id: string, options: PrivateCoralPmtilesOptions, dispatcher: unknown, eventedParent: unknown) {
-    super(id, options, dispatcher, eventedParent);
-    if (!options.getToken) throw httpError("Private coral PMTiles requires getToken", 401);
-
-    this.privateFetchSource = new PrivateCoralFetchSource(options.url, options.getToken);
-    const instance = new PMTiles(this.privateFetchSource);
-    const protocol = new Protocol();
-    protocol.add(instance);
-    // mapbox-pmtiles does no I/O in its constructor. Replace both together before load().
-    const internals = this as unknown as PmTilesInternals;
-    internals._instance = instance;
-    internals._protocol = protocol;
-  }
-
-  onRemove(...args: unknown[]): void {
-    this.privateFetchSource.dispose();
-    // PmTilesSource inherits VectorTileSource.onRemove(map); preserve its worker/cache cleanup.
-    const parentOnRemove = (PmTilesSource.prototype as { onRemove?: (...parentArgs: unknown[]) => void }).onRemove;
-    parentOnRemove?.apply(this, args);
-  }
+function registerPrivateCoralProtocolOnce(): void {
+  if (privateProtocolRegistered) return;
+  privateProtocolRegistered = true;
+  maplibregl.addProtocol("private-coral", async (request, abortController): Promise<GetResourceResponse<unknown>> => {
+    const match = request.url.match(/^private-coral:\/\/([^/]+)(\/.*)?$/);
+    const key = match?.[1];
+    const entry = key ? privateProtocolEntries.get(key) : undefined;
+    if (!entry) throw httpError("Private coral PMTiles source is unavailable", 410);
+    const delegatedRequest = {
+      ...request,
+      url: `pmtiles://${entry.source.getKey()}${match?.[2] ?? ""}`,
+    };
+    // pmtiles Protocol supports the same request/AbortController bridge used by
+    // MapLibre. Keep the cast local because its v3 compatibility declaration is broad.
+    return await (entry.protocol.tile as unknown as (
+      params: typeof delegatedRequest,
+      controller: AbortController,
+    ) => Promise<GetResourceResponse<unknown>>)(delegatedRequest, abortController);
+  });
 }
 
-let registered = false;
+/** 建立一個只屬於目前帳號的 private-coral:// source URL。 */
+export function createPrivateCoralPmtilesUrl(options: PrivateCoralPmtilesOptions): {
+  url: string;
+  dispose: () => void;
+} {
+  if (!options.getToken) throw httpError("Private coral PMTiles requires getToken", 401);
+  registerPrivateCoralProtocolOnce();
+  const source = new PrivateCoralFetchSource(options.url, options.getToken);
+  const protocol = new Protocol({ metadata: true });
+  protocol.add(new PMTiles(source));
+  const key = `coral-${++privateProtocolSequence}`;
+  privateProtocolEntries.set(key, { source, protocol });
+  return {
+    url: `private-coral://${key}`,
+    dispose: () => {
+      const entry = privateProtocolEntries.get(key);
+      if (!entry) return;
+      entry.source.dispose();
+      privateProtocolEntries.delete(key);
+    },
+  };
+}
 
-/** Register once, before adding a source with `PRIVATE_CORAL_PMTILES_SOURCE_TYPE`. */
+/** 舊呼叫點相容入口；實際 protocol 會在 createPrivateCoralPmtilesUrl 時建立。 */
 export function registerPrivateCoralSourceOnce(): void {
-  if (registered) return;
-  registered = true;
-  try {
-    const Style = (mapboxgl as unknown as {
-      Style: { setSourceType: (type: string, implementation: unknown) => void };
-    }).Style;
-    Style.setSourceType(PRIVATE_CORAL_PMTILES_SOURCE_TYPE, PrivateCoralPmTilesSource);
-  } catch {
-    // Another map in this JS realm may already have registered the dedicated type.
-  }
+  registerPrivateCoralProtocolOnce();
 }
 
 export const __test__ = { PrivateCoralFetchSource, linkAbortSignal };

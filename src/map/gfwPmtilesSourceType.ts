@@ -1,12 +1,8 @@
-// GFW hourly Grid keeps an immutable archive mounted across a UTC hour. Mapbox can
-// request a vector tile again when only a paint expression changes; mapbox-pmtiles
-// otherwise forwards that request to a fresh HTTP Range read. Cache decoded archive
-// tile bytes per retained source so timeline crossfade remains a pure GPU repaint.
-import mapboxgl from "mapbox-gl";
-// @ts-expect-error mapbox-pmtiles does not ship declarations for its ESM build.
-import { PmTilesSource } from "mapbox-pmtiles/dist/mapbox-pmtiles.js";
+// GFW hourly Grid keeps an immutable archive mounted across a UTC hour. The
+// MapLibre protocol is shared with every other public PMTiles overlay.
+import { registerPmtilesProtocolOnce } from "./pmtilesSourceType";
 
-export const GFW_PMTILES_SOURCE_TYPE = "gfw-pmtile-source";
+export const GFW_PMTILES_SOURCE_TYPE = "vector";
 
 type ProtocolCallback = (error?: unknown, data?: Uint8Array, cacheControl?: string, expires?: string) => void;
 type ProtocolRequest = { url: string };
@@ -15,8 +11,6 @@ type Protocol = {
   tile: (request: ProtocolRequest, callback: ProtocolCallback) => ProtocolCancel;
 };
 type CachedTile = { data: Uint8Array; cacheControl: string; expires: string };
-type SourceInternals = { _protocol: Protocol };
-
 const MAX_CACHED_TILES_PER_ARCHIVE = 192;
 
 function cloneBytes(data: Uint8Array): Uint8Array {
@@ -190,33 +184,8 @@ function reloadPmVectorTile(
   return true;
 }
 
-class GfwPmTilesSource extends PmTilesSource {
-  constructor(...args: any[]) {
-    super(...args);
-    cacheProtocolTileReads((this as unknown as SourceInternals)._protocol);
-  }
-
-  loadVectorTile(tile: PmTile, callback: TileCallback): void {
-    const self = this as unknown as PmSourceInternals;
-    const retry = (nextTile: PmTile, nextCallback: TileCallback) => { this.loadVectorTile(nextTile, nextCallback); };
-    if (reloadPmVectorTile(self, tile, callback, retry)) return;
-    super.loadVectorTile(tile, callback);
-  }
-}
-
-let registered = false;
-
 export function registerGfwPmtilesSourceTypeOnce(): void {
-  if (registered) return;
-  registered = true;
-  try {
-    const Style = (mapboxgl as unknown as {
-      Style: { setSourceType: (type: string, implementation: unknown) => void };
-    }).Style;
-    Style.setSourceType(GFW_PMTILES_SOURCE_TYPE, GfwPmTilesSource);
-  } catch {
-    // A previously initialized map may have registered this type already.
-  }
+  registerPmtilesProtocolOnce();
 }
 
 // Exported for a focused no-Range regression test without depending on Mapbox internals.

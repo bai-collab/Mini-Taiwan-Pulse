@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
+import type { GeoJSONSource, Map as MapboxMap } from "maplibre-gl";
 import { fetchAnimalWelfarePoints, type AnimalWelfarePointRow } from "../data/animalWelfarePointsLoader";
 import { ANIMAL_WELFARE_POINT_COLOR_EXPR, animalWelfarePointTypeFilter } from "../data/animalWelfarePointsTypes";
 import { keepLoadingUntilMapIdle } from "../lib/loadingRegistry";

@@ -1,4 +1,4 @@
-import type { Map as MapboxMap, ExpressionSpecification, FillLayerSpecification } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource, ExpressionSpecification, FillLayerSpecification } from "maplibre-gl";
 import type { TemperatureGridData } from "../data/temperatureLoader";
 import { TEMPERATURE_GRID_BANDS } from "../data/temperatureGridTypes";
 
@@ -132,7 +132,7 @@ export function ensureTemperatureGridLayer(map: MapboxMap, opacity: number): boo
 }
 
 export function setTemperatureGridData(map: MapboxMap, geojson: GeoJSON.FeatureCollection): void {
-  const source = map.getSource(TEMPERATURE_GRID_SOURCE_ID);
+  const source = map.getSource(TEMPERATURE_GRID_SOURCE_ID) as GeoJSONSource | undefined;
   if (!source || source.type !== "geojson") return;
   source.setData(geojson);
 }

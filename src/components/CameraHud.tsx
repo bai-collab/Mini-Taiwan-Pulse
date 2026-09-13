@@ -1,5 +1,5 @@
 import { useSyncExternalStore, type CSSProperties } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 
 export interface CameraInfo {
   lng: number;

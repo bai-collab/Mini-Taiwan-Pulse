@@ -1,8 +1,6 @@
 import { useEffect } from "react";
-import mapboxgl from "mapbox-gl";
-import type { Map as MapboxMap } from "mapbox-gl";
-// @ts-expect-error 套件未提供 ESM build 的型別宣告
-import { PmTilesSource } from "mapbox-pmtiles/dist/mapbox-pmtiles.js";
+import type { Map as MapboxMap, ExpressionSpecification } from "maplibre-gl";
+import { pmtilesUrl, registerPmtilesProtocolOnce } from "../map/pmtilesSourceType";
 import { useMapReadyTick } from "./useMapReadyTick";
 
 /**
@@ -19,20 +17,9 @@ import { useMapReadyTick } from "./useMapReadyTick";
  *   水泥桿（83.7%）/ 水泥併桿（14.4%）/ 木桿（1.0%）/ H桿（0.7%）/ 其他（0.2%）
  */
 
-const SOURCE_TYPE = (PmTilesSource as unknown as { SOURCE_TYPE: string }).SOURCE_TYPE;
-
-let sourceTypeRegistered = false;
+const SOURCE_TYPE = "vector";
 function registerSourceTypeOnce() {
-  if (sourceTypeRegistered) return;
-  sourceTypeRegistered = true;
-  try {
-    const Style = (mapboxgl as unknown as {
-      Style: { setSourceType: (t: string, impl: unknown) => void };
-    }).Style;
-    Style.setSourceType(SOURCE_TYPE, PmTilesSource);
-  } catch {
-    // 其他 PMTiles factory 已註冊過
-  }
+  registerPmtilesProtocolOnce();
 }
 
 const BASE = `${import.meta.env.BASE_URL ?? "/"}coverage`;
@@ -42,7 +29,7 @@ const HEAT_ID = "power-poles-heat";
 const CIRCLE_ID = "power-poles-circle";
 
 // pole_type → color（5 類，全表保留原 12 種值，其他 8 種歸為「其他」）
-const POLE_TYPE_COLOR_EXPR: mapboxgl.ExpressionSpecification = [
+const POLE_TYPE_COLOR_EXPR: ExpressionSpecification = [
   "match",
   ["get", "pole_type"],
   "水泥桿", "#94a3b8",
@@ -50,7 +37,7 @@ const POLE_TYPE_COLOR_EXPR: mapboxgl.ExpressionSpecification = [
   "木桿", "#a16207",
   "H桿", "#0ea5e9",
   "#f43f5e", // default = 其他（鋼桿 / 用戶自備桿 / 木併桿 / 3T桿 / 併桿 / 鋼併桿 / 電塔 / 接桿）
-] as unknown as mapboxgl.ExpressionSpecification;
+] as unknown as ExpressionSpecification;
 
 export function usePowerPolesLayer(
   mapRef: React.RefObject<MapboxMap | null>,
@@ -82,7 +69,7 @@ export function usePowerPolesLayer(
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
           type: SOURCE_TYPE,
-          url: `${BASE}/power_poles.pmtiles`,
+          url: pmtilesUrl(`${BASE}/power_poles.pmtiles`),
           minzoom: 5,
           maxzoom: 14,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -90,23 +77,23 @@ export function usePowerPolesLayer(
       }
       // Heatmap layer — z5-12 看密度（z<8 透明度由 z5Reveal 控制，預設關）
       // weight 用 point_count（cluster 代表 N 根桿時權重 = N），z5 cluster 可能代表 50k+ 根桿
-      const heatWeight: mapboxgl.ExpressionSpecification = [
+      const heatWeight: ExpressionSpecification = [
         "interpolate", ["linear"], ["coalesce", ["get", "point_count"], 1],
         1, 1,
         100, 8,
         1000, 30,
         10000, 80,
         50000, 200,
-      ] as unknown as mapboxgl.ExpressionSpecification;
+      ] as unknown as ExpressionSpecification;
       // z5-7 用 z5Reveal 控制（0=透明，1=opacity*heatStrength），z8-11 正常，z11-13 淡出給 circle
-      const heatOpacityExpr: mapboxgl.ExpressionSpecification = [
+      const heatOpacityExpr: ExpressionSpecification = [
         "interpolate", ["linear"], ["zoom"],
         5, opacity * heatStrength * z5Reveal,
         7.9, opacity * heatStrength * z5Reveal,
         8, opacity * heatStrength,
         11, opacity * heatStrength,
         13, 0,
-      ] as unknown as mapboxgl.ExpressionSpecification;
+      ] as unknown as ExpressionSpecification;
       if (!map.getLayer(HEAT_ID)) {
         map.addLayer({
           id: HEAT_ID,

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { CircleLayer, GeoJSONSource, Map as MapboxMap, MapMouseEvent } from "mapbox-gl";
+import type { CircleLayerSpecification, GeoJSONSource, Map as MapboxMap, MapMouseEvent } from "maplibre-gl";
 import {
   fetchGlobalEventsCurrent,
   fetchGlobalEventsWindow,
@@ -161,7 +161,7 @@ function ensureLayers(map: MapboxMap): void {
         "circle-stroke-width": 2.5,
         "circle-stroke-opacity": 0,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
   if (!map.getLayer(GLOBAL_EVENTS_CLUSTER_LAYER_ID)) map.addLayer({
     id: GLOBAL_EVENTS_CLUSTER_LAYER_ID, type: "circle", source: CLUSTERS_SOURCE_ID,

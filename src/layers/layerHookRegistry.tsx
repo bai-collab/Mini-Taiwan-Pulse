@@ -35,7 +35,7 @@ import {
   ReservoirStatusHost, RainGaugeHost, FloodSensorHost, FloodSensorIsochroneHost,
   TaipeiSewerHost, TaipeiEvacuateHost, TaipeiPumbHost, PrecipRasterHost,
   RiverLevelHost, MarineObservationHost, GroundwaterWellsHost, GroundwaterHost,
-  IotWraRiverHost, IotWraStructureHost,
+  IotWraRiverHost, IotWraStructureHost, RiverFlowHost,
 } from "./hosts/waterHosts";
 import { NewsEventsHost, NewsTimelineHost } from "./hosts/newsHosts";
 import {
@@ -115,6 +115,8 @@ export const LAYER_HOOK_REGISTRY: readonly LayerHookEntry[] = [
   { id: "useTaipeiPumbLayer", keys: ["taipeiPumb"], Host: TaipeiPumbHost },
   { id: "usePrecipRasterLayer", keys: ["precipRaster"], Host: PrecipRasterHost },
   { id: "useRiverLevelLayer", keys: ["riverLevel"], Host: RiverLevelHost },
+  // 河川水流方向動畫（marching-ants；疊在 waterRivers 的 water-rivers source 上）
+  { id: "useRiverFlowLayer", keys: ["waterRivers"], Host: RiverFlowHost },
   {
     id: "useMarineObservationLayers",
     keys: ["marineObservationCwa", "marineObservationIsohe"],

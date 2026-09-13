@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { beginGfwV4TrackPick, nearestGfwV4TrackPoint, registerGfwV4TrackPicker } from "./gfwV4TrackPicking";
 
 const projectMap = {

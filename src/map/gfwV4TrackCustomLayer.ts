@@ -1,4 +1,4 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapboxMap } from "maplibre-gl";
 import type { FrameBudget, TrackFrame } from "../gfw-v4-bench/types";
 import {
   GfwV4TrackScene,
@@ -6,6 +6,7 @@ import {
   type GfwV4RenderedFrame,
   type GfwV4ViewBounds,
 } from "../three/GfwV4TrackScene";
+import { customLayerMatrix, customLayerProjectionName } from "./maplibreCustomLayer";
 
 export const GFW_V4_TRACK_CUSTOM_LAYER_ID = "gfw-v4-tracks-custom";
 
@@ -47,8 +48,13 @@ export function createGfwV4TrackCustomLayer(options: GfwV4TrackCustomLayerOption
       map = mapInstance;
       scene.init(gl);
     },
-    render(_gl: WebGLRenderingContext, matrix: number[], projection?: { name?: string }) {
+    render(
+      _gl: WebGLRenderingContext | WebGL2RenderingContext,
+      renderInput: CustomRenderMethodInput | ArrayLike<number>,
+      legacyProjection?: { name?: string },
+    ) {
       try {
+        const matrix = customLayerMatrix(renderInput);
         if (!map || !options.getVisible()) return;
         const frame = options.getSpatialFrame?.() ?? options.getFrame();
         if (!frame) return;
@@ -72,7 +78,9 @@ export function createGfwV4TrackCustomLayer(options: GfwV4TrackCustomLayerOption
         scene.render(matrix);
         if (spatialVisible) options.onSpatialRendered?.({
           pointCount: spatialVisible.pointCount,
-          projectionName: projection?.name ?? null,
+          projectionName: Array.isArray(renderInput)
+            ? legacyProjection?.name ?? null
+            : customLayerProjectionName(renderInput as CustomRenderMethodInput),
         });
       } catch (error) {
         if (!warnedRenderFailure) {

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap, CircleLayer, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, CircleLayerSpecification, GeoJSONSource } from "maplibre-gl";
 import { fetchGroundwaterLatest, type GroundwaterLatestRow } from "../data/groundwaterLoader";
 import { keepLoadingUntilMapIdle } from "../lib/loadingRegistry";
 import { useMapReadyTick } from "./useMapReadyTick";
@@ -58,7 +58,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-stroke-color": isDark ? "#1e293b" : "#ffffff",
         "circle-stroke-opacity": 0.8 * opacity,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 }
 

@@ -19,7 +19,7 @@
 // 全部 hook 重跑」，本棒是**等價重構**，行為必須逐位保真。per-key 訂閱帶來的
 // re-render 收斂是第 4 階段的事（那時 App 端才解除全店訂閱）。
 
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import type { AppMode, AqiProduct, FeatureInfo, LayerVisibility, RailData, TimeMode } from "../types";
 import type { useH3Data } from "../hooks/useH3Data";
 import type { useDemographicsH3, useDemographicsYearlyH3 } from "../hooks/useDemographicsH3";

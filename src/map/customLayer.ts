@@ -1,10 +1,11 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapboxMap } from "maplibre-gl";
 import type { Flight, Ship, RailTrain, RenderMode } from "../types";
 import { FlightScene } from "../three/FlightScene";
 import { ShipScene } from "../three/ShipScene";
 import { RailScene } from "../three/RailScene";
 import { setAltExaggeration, getAltExaggeration, setAltOffset, getAltOffset } from "../utils/coordinates";
 import { loadingRegistry } from "../lib/loadingRegistry";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 // 首次開啟 flight/ship 圖層時，Three.js 軌跡建構是同步阻塞主執行緒（5-10s）。
 // 用「首幀只啟動 loading 圈圈並 return、下一幀才真正建構」讓圈圈先畫出來，
@@ -50,7 +51,8 @@ export function createFlightLayer(opts: FlightLayerOptions): CustomLayerInterfac
       opts.onSceneReady?.(flightScene);
     },
 
-    render(_gl: WebGLRenderingContext, matrix: number[]) {
+    render(_gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      const matrix = customLayerMatrix(renderInput);
       if (!opts.getIsVisible()) {
         if (loadId) { loadingRegistry.end(loadId); loadId = ""; }
         gate = "off";
@@ -160,7 +162,8 @@ export function createShipLayer(opts: ShipLayerOptions): CustomLayerInterface {
       opts.onSceneReady?.(shipScene);
     },
 
-    render(_gl: WebGLRenderingContext, matrix: number[]) {
+    render(_gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      const matrix = customLayerMatrix(renderInput);
       if (!opts.getIsVisible()) {
         if (loadId) { loadingRegistry.end(loadId); loadId = ""; }
         gate = "off";
@@ -243,7 +246,8 @@ export function createRailLayer(opts: RailLayerOptions): CustomLayerInterface {
       opts.onSceneReady?.(railScene);
     },
 
-    render(_gl: WebGLRenderingContext, matrix: number[]) {
+    render(_gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      const matrix = customLayerMatrix(renderInput);
       if (!opts.getIsVisible()) return;
 
       const isDark = opts.getIsDarkTheme();

@@ -1,8 +1,6 @@
 import { useEffect } from "react";
-import mapboxgl from "mapbox-gl";
-import type { Map as MapboxMap, FilterSpecification } from "mapbox-gl";
-// @ts-expect-error 套件未提供 ESM build 的型別宣告
-import { PmTilesSource } from "mapbox-pmtiles/dist/mapbox-pmtiles.js";
+import type { Map as MapboxMap, FilterSpecification, ExpressionSpecification } from "maplibre-gl";
+import { pmtilesUrl, registerPmtilesProtocolOnce } from "../map/pmtilesSourceType";
 import { useMapReadyTick } from "./useMapReadyTick";
 
 /**
@@ -19,20 +17,9 @@ import { useMapReadyTick } from "./useMapReadyTick";
  * 是 Path A（Mapbox 原生）方案 — 沒 additive 但已能到 ~70% 星系感。
  */
 
-const SOURCE_TYPE = (PmTilesSource as unknown as { SOURCE_TYPE: string }).SOURCE_TYPE;
-
-let sourceTypeRegistered = false;
+const SOURCE_TYPE = "vector";
 function registerSourceTypeOnce() {
-  if (sourceTypeRegistered) return;
-  sourceTypeRegistered = true;
-  try {
-    const Style = (mapboxgl as unknown as {
-      Style: { setSourceType: (t: string, impl: unknown) => void };
-    }).Style;
-    Style.setSourceType(SOURCE_TYPE, PmTilesSource);
-  } catch {
-    // 已註冊
-  }
+  registerPmtilesProtocolOnce();
 }
 
 const BASE = `${import.meta.env.BASE_URL ?? "/"}coverage`;
@@ -52,7 +39,7 @@ const RESTRICTED_LAYERS: FilterSpecification = [
     ["CTR", "CONTROL", "SURFACE", "RCR", "DANGER", "ULZ", "CIRCUIT"]],
 ] as unknown as FilterSpecification;
 
-const COLOR_EXPR: mapboxgl.ExpressionSpecification = [
+const COLOR_EXPR: ExpressionSpecification = [
   "match", ["get", "layer"],
   "CTR", "#38bdf8",
   "CONTROL", "#38bdf8",
@@ -62,13 +49,13 @@ const COLOR_EXPR: mapboxgl.ExpressionSpecification = [
   "ULZ", "#facc15",
   "CIRCUIT", "#4ade80",
   "#e2e8f0",
-] as unknown as mapboxgl.ExpressionSpecification;
+] as unknown as ExpressionSpecification;
 
 function setVis(map: MapboxMap, id: string, on: boolean) {
   if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
 }
 function safeIsStyleLoaded(map: MapboxMap): boolean {
-  try { return map.isStyleLoaded(); } catch { return false; }
+  try { return map.isStyleLoaded() === true; } catch { return false; }
 }
 
 export function useAviationRestrictedGlowLayer(
@@ -98,7 +85,7 @@ export function useAviationRestrictedGlowLayer(
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
           type: SOURCE_TYPE,
-          url: `${BASE}/aviation_airspace.pmtiles`,
+          url: pmtilesUrl(`${BASE}/aviation_airspace.pmtiles`),
           minzoom: 4,
           maxzoom: 12,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -1,4 +1,5 @@
-import type { CustomLayerInterface, Map as MapboxMap, ProjectionSpecification } from "mapbox-gl";
+import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapboxMap } from "maplibre-gl";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export interface ClimateParticleLineLayerOptions {
   id: string;
@@ -145,49 +146,6 @@ function mercatorX(lon: number) {
 function mercatorY(lat: number) {
   const latRad = clamp(lat, -85.051129, 85.051129) * PI / 180;
   return 0.5 - Math.log(Math.tan(PI / 4 + latRad / 2)) / (2 * PI);
-}
-
-// column-major 4x4 反矩陣（gl-matrix 手法）；用來把相機 mercator 座標轉回 ECEF 供背面剔除。
-function invertMat4(m: ArrayLike<number>): Float32Array | null {
-  const a00 = m[0]!, a01 = m[1]!, a02 = m[2]!, a03 = m[3]!;
-  const a10 = m[4]!, a11 = m[5]!, a12 = m[6]!, a13 = m[7]!;
-  const a20 = m[8]!, a21 = m[9]!, a22 = m[10]!, a23 = m[11]!;
-  const a30 = m[12]!, a31 = m[13]!, a32 = m[14]!, a33 = m[15]!;
-  const b00 = a00 * a11 - a01 * a10, b01 = a00 * a12 - a02 * a10, b02 = a00 * a13 - a03 * a10;
-  const b03 = a01 * a12 - a02 * a11, b04 = a01 * a13 - a03 * a11, b05 = a02 * a13 - a03 * a12;
-  const b06 = a20 * a31 - a21 * a30, b07 = a20 * a32 - a22 * a30, b08 = a20 * a33 - a23 * a30;
-  const b09 = a21 * a32 - a22 * a31, b10 = a21 * a33 - a23 * a31, b11 = a22 * a33 - a23 * a32;
-  let det = b00 * b11 - b01 * b10 + b02 * b09 + b03 * b08 - b04 * b07 + b05 * b06;
-  if (!det) return null;
-  det = 1.0 / det;
-  const o = new Float32Array(16);
-  o[0] = (a11 * b11 - a12 * b10 + a13 * b09) * det;
-  o[1] = (a02 * b10 - a01 * b11 - a03 * b09) * det;
-  o[2] = (a31 * b05 - a32 * b04 + a33 * b03) * det;
-  o[3] = (a22 * b04 - a21 * b05 - a23 * b03) * det;
-  o[4] = (a12 * b08 - a10 * b11 - a13 * b07) * det;
-  o[5] = (a00 * b11 - a02 * b08 + a03 * b07) * det;
-  o[6] = (a32 * b02 - a30 * b05 - a33 * b01) * det;
-  o[7] = (a20 * b05 - a22 * b02 + a23 * b01) * det;
-  o[8] = (a10 * b10 - a11 * b08 + a13 * b06) * det;
-  o[9] = (a01 * b08 - a00 * b10 - a03 * b06) * det;
-  o[10] = (a30 * b04 - a31 * b02 + a33 * b00) * det;
-  o[11] = (a21 * b02 - a20 * b04 - a23 * b00) * det;
-  o[12] = (a11 * b07 - a10 * b09 - a12 * b06) * det;
-  o[13] = (a00 * b09 - a01 * b07 + a02 * b06) * det;
-  o[14] = (a31 * b01 - a30 * b03 - a32 * b00) * det;
-  o[15] = (a20 * b03 - a21 * b01 + a22 * b00) * det;
-  return o;
-}
-
-// column-major mat4 · (x,y,z,1)，含透視除法（比照 three.js Vector3.applyMatrix4）。
-function transformPoint(m: ArrayLike<number>, x: number, y: number, z: number): [number, number, number] {
-  const w = (m[3]! * x + m[7]! * y + m[11]! * z + m[15]!) || 1;
-  return [
-    (m[0]! * x + m[4]! * y + m[8]! * z + m[12]!) / w,
-    (m[1]! * x + m[5]! * y + m[9]! * z + m[13]!) / w,
-    (m[2]! * x + m[6]! * y + m[10]! * z + m[14]!) / w,
-  ];
 }
 
 function compileShader(gl: WebGL2RenderingContext, type: number, source: string): WebGLShader {
@@ -599,9 +557,7 @@ export function createClimateParticleLineLayer(opts: ClimateParticleLineLayerOpt
   let uMatrix: WebGLUniformLocation | null = null;
   let uResolution: WebGLUniformLocation | null = null;
   let uLineWidth: WebGLUniformLocation | null = null;
-  let uGlobeToMerc: WebGLUniformLocation | null = null;
   let uTransition: WebGLUniformLocation | null = null;
-  let uCameraEcef: WebGLUniformLocation | null = null;
   let state: ClimateParticleLineState | null = null;
   let meta: ClimateMeta | null = null;
   let dataReady = false;
@@ -662,9 +618,7 @@ export function createClimateParticleLineLayer(opts: ClimateParticleLineLayerOpt
       uMatrix = gl.getUniformLocation(program, "u_matrix");
       uResolution = gl.getUniformLocation(program, "u_resolution");
       uLineWidth = gl.getUniformLocation(program, "u_line_width");
-      uGlobeToMerc = gl.getUniformLocation(program, "u_globe_to_merc");
       uTransition = gl.getUniformLocation(program, "u_transition");
-      uCameraEcef = gl.getUniformLocation(program, "u_camera_ecef");
 
       // VAO 封裝所有 attribute + divisor 設定，避免污染 mapbox 共用的 GL 狀態。
       vao = gl.createVertexArray();
@@ -696,13 +650,12 @@ export function createClimateParticleLineLayer(opts: ClimateParticleLineLayerOpt
       loadData();
     },
 
-    render(
-      glCtx: WebGL2RenderingContext,
-      matrix: number[],
-      projection?: ProjectionSpecification,
-      projectionToMercatorMatrix?: number[],
-      projectionToMercatorTransition?: number,
-    ) {
+    render(gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      // The particle shader uses WebGL2 instancing. MapLibre normally supplies WebGL2;
+      // if a host forces a WebGL1 context this optional visual layer simply skips a frame.
+      if (!("createVertexArray" in gl) || !("drawArraysInstanced" in gl)) return;
+      const glCtx = gl as WebGL2RenderingContext;
+      const matrix = customLayerMatrix(renderInput);
       if (!opts.getIsVisible()) return;
       if (!dataReady || !state || !program || !vao || !instanceBuffer || !uMatrix || !uResolution || !uLineWidth) {
         loadData();
@@ -731,21 +684,9 @@ export function createClimateParticleLineLayer(opts: ClimateParticleLineLayerOpt
         console.log(`[ClimateParticleLine ${opts.id}] first render`, { instanceCount, particleCount: opts.getParticleCount() });
       }
 
-      // globe 貼球：Mapbox v3 低 zoom 給 ECEF→mercator 矩陣 + 過渡係數。相機轉回 ECEF
-      // （inverse(globeToMerc)·camMerc）供背面剔除；transition≥1（拉近 mercator）走 early-out。
+      // OpenFreeMap Liberty 使用 mercator。MapLibre 的 globe projection data 尚未
+      // 提供舊 Mapbox 的 ECEF transition matrix，因此這個 shader 保留 mercator 路徑。
       let transition = 1;
-      let cameraEcef: [number, number, number] | null = null;
-      const isGlobe = projection?.name === "globe"
-        && Array.isArray(projectionToMercatorMatrix)
-        && projectionToMercatorMatrix.length >= 16;
-      if (isGlobe && (projectionToMercatorTransition ?? 0) < 1) {
-        const cam = map?.getFreeCameraOptions().position;
-        const inv = invertMat4(projectionToMercatorMatrix!);
-        if (cam && inv) {
-          cameraEcef = transformPoint(inv, cam.x, cam.y, cam.z);
-          transition = clamp(projectionToMercatorTransition ?? 0, 0, 1);
-        }
-      }
 
       glCtx.useProgram(program);
       glCtx.bindVertexArray(vao);
@@ -755,10 +696,6 @@ export function createClimateParticleLineLayer(opts: ClimateParticleLineLayerOpt
       glCtx.uniform2f(uResolution, glCtx.drawingBufferWidth, glCtx.drawingBufferHeight);
       glCtx.uniform1f(uLineWidth, clamp(opts.getLineWidth(), 0.5, 4.0) * (window.devicePixelRatio || 1));
       glCtx.uniform1f(uTransition, transition);
-      if (transition < 1 && cameraEcef) {
-        glCtx.uniformMatrix4fv(uGlobeToMerc, false, projectionToMercatorMatrix!);
-        glCtx.uniform3f(uCameraEcef, cameraEcef[0], cameraEcef[1], cameraEcef[2]);
-      }
 
       glCtx.disable(glCtx.DEPTH_TEST);
       glCtx.disable(glCtx.CULL_FACE);

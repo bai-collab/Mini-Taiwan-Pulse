@@ -1,11 +1,12 @@
 import { useEffect, useRef, useCallback } from "react";
 import type {
   Map as MapboxMap,
-  FillLayer,
-  LineLayer,
+  FillLayerSpecification,
+  LineLayerSpecification,
   FilterSpecification,
   ExpressionSpecification,
-} from "mapbox-gl";
+  GeoJSONSource,
+} from "maplibre-gl";
 import {
   fetchPlaTracksRange,
   fetchPlaDailyStats,
@@ -130,7 +131,7 @@ function buildLayers(map: MapboxMap, opacity: number, trailDays: number): boolea
         "fill-color": ["get", "kind_color"] as unknown as ExpressionSpecification,
         "fill-opacity": fillOpacityExpr(opacity, trailDays),
       },
-    } as FillLayer);
+    } as FillLayerSpecification);
   }
 
   if (!map.getLayer(LINE_ID)) {
@@ -145,7 +146,7 @@ function buildLayers(map: MapboxMap, opacity: number, trailDays: number): boolea
         "line-opacity": lineOpacityExpr(opacity, trailDays),
         "line-dasharray": LINE_DASH,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
 
   return true;
@@ -212,7 +213,7 @@ export function usePlaActivityLayer(
   );
 
   const refreshSource = useCallback((map: MapboxMap) => {
-    const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    const src = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
     if (!src) return;
     src.setData(tracksToGeoJSON(activeRef.current ?? [], statsRef.current ?? undefined));
   }, []);

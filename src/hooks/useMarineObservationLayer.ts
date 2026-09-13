@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import type {
-  CircleLayer,
+  CircleLayerSpecification,
   ExpressionSpecification,
   GeoJSONSource,
   Map as MapboxMap,
-} from "mapbox-gl";
+} from "maplibre-gl";
 import {
   loadMarineObservationFeatures,
   type MarineObservationFeatureCollection,
@@ -158,7 +158,7 @@ function marineObservationOpacityExpression(
 export function marineObservationCircleLayers(
   sourceNetwork: MarineSourceNetwork,
   opacity = 0.85,
-): readonly CircleLayer[] {
+): readonly CircleLayerSpecification[] {
   const config = NETWORK_CONFIG[sourceNetwork];
   const color = marineObservationColorExpression(sourceNetwork);
   const pointOpacity = marineObservationOpacityExpression(opacity);
@@ -174,7 +174,7 @@ export function marineObservationCircleLayers(
         "circle-opacity": marineObservationOpacityExpression(opacity * 0.24),
         "circle-blur": 0.75,
       },
-    } as CircleLayer,
+    } as CircleLayerSpecification,
     {
       id: config.circleLayerId,
       type: "circle",
@@ -193,7 +193,7 @@ export function marineObservationCircleLayers(
         ] as unknown as ExpressionSpecification,
         "circle-stroke-opacity": clampOpacity(opacity),
       },
-    } as CircleLayer,
+    } as CircleLayerSpecification,
   ];
 }
 

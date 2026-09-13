@@ -14,6 +14,7 @@ import { useGroundwaterWellsLayer } from "../../hooks/useGroundwaterWellsLayer";
 import { useGroundwaterLayer } from "../../hooks/useGroundwaterLayer";
 import { useIotWraRiverLayer } from "../../hooks/useIotWraRiverLayer";
 import { useIotWraStructureLayer } from "../../hooks/useIotWraStructureLayer";
+import { useRiverFlowLayer } from "../../hooks/useRiverFlowLayer";
 import { bumpHostRender, type LayerHostComponent } from "../layerHostDeps";
 import { useKeyOverlayParams } from "../layerParamsAccess";
 
@@ -136,6 +137,17 @@ export const RiverLevelHost: LayerHostComponent = ({ deps }) => {
     deps.isDarkTheme,
     p.riverLevelScale ?? 1,
     p.riverLevelOpacity ?? 1,
+  );
+  return null;
+};
+
+/** 河川水流方向動畫：waterRivers 開啟時，在 water-rivers source 疊 marching-ants 流動線。 */
+export const RiverFlowHost: LayerHostComponent = ({ deps }) => {
+  bumpHostRender("useRiverFlowLayer");
+  useRiverFlowLayer(
+    deps.mapRef,
+    deps.layerVisibility.waterRivers,
+    deps.isDarkTheme,
   );
   return null;
 };

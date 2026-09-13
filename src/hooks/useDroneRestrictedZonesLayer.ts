@@ -1,8 +1,6 @@
 import { useEffect } from "react";
-import mapboxgl from "mapbox-gl";
-import type { Map as MapboxMap, FilterSpecification } from "mapbox-gl";
-// @ts-expect-error 套件未提供 ESM build 的型別宣告
-import { PmTilesSource } from "mapbox-pmtiles/dist/mapbox-pmtiles.js";
+import type { Map as MapboxMap, FilterSpecification } from "maplibre-gl";
+import { pmtilesUrl, registerPmtilesProtocolOnce } from "../map/pmtilesSourceType";
 import { useMapReadyTick } from "./useMapReadyTick";
 
 /**
@@ -20,20 +18,9 @@ import { useMapReadyTick } from "./useMapReadyTick";
  * 機場 5km 圈 / 軍區 / 邊境 / 國家公園 → 規則上都禁飛，視覺保守 > 激進。
  */
 
-const SOURCE_TYPE = (PmTilesSource as unknown as { SOURCE_TYPE: string }).SOURCE_TYPE;
-
-let sourceTypeRegistered = false;
+const SOURCE_TYPE = "vector";
 function registerSourceTypeOnce() {
-  if (sourceTypeRegistered) return;
-  sourceTypeRegistered = true;
-  try {
-    const Style = (mapboxgl as unknown as {
-      Style: { setSourceType: (t: string, impl: unknown) => void };
-    }).Style;
-    Style.setSourceType(SOURCE_TYPE, PmTilesSource);
-  } catch {
-    // 其他 PMTiles factory 已註冊過
-  }
+  registerPmtilesProtocolOnce();
 }
 
 const BASE = `${import.meta.env.BASE_URL ?? "/"}coverage`;
@@ -65,7 +52,7 @@ function setVis(map: MapboxMap, id: string, on: boolean) {
 }
 
 function safeIsStyleLoaded(map: MapboxMap): boolean {
-  try { return map.isStyleLoaded(); } catch { return false; }
+  try { return map.isStyleLoaded() === true; } catch { return false; }
 }
 
 export function useDroneZonesLayer(
@@ -99,7 +86,7 @@ export function useDroneZonesLayer(
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
           type: SOURCE_TYPE,
-          url: `${BASE}/drone_restricted_zones.pmtiles`,
+          url: pmtilesUrl(`${BASE}/drone_restricted_zones.pmtiles`),
           minzoom: 5,
           maxzoom: 14,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

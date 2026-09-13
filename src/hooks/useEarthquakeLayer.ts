@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import type { Map as MapboxMap, ExpressionSpecification, FilterSpecification, CircleLayer } from "mapbox-gl";
+import type { Map as MapboxMap, ExpressionSpecification, FilterSpecification, CircleLayerSpecification } from "maplibre-gl";
 import { fetchEarthquakes, earthquakesToGeoJSON, type EarthquakeEvent } from "../data/earthquakeLoader";
 import { timeStore } from "../state/timeStore";
 import { useMapReadyTick } from "./useMapReadyTick";
@@ -74,7 +74,7 @@ function buildLayers(map: MapboxMap) {
         "circle-stroke-width": 1,
         "circle-stroke-opacity": 0.55,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 
   // pre: 即將發生的預示
@@ -91,7 +91,7 @@ function buildLayers(map: MapboxMap) {
         "circle-stroke-width": 1,
         "circle-stroke-opacity": 0.25,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 
   // ripple
@@ -109,7 +109,7 @@ function buildLayers(map: MapboxMap) {
         "circle-stroke-width": 2,
         "circle-stroke-opacity": 0,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 
   return true;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap, CircleLayerSpecification, FilterSpecification } from "maplibre-gl";
 import { timeStore } from "../state/timeStore";
 
 /**
@@ -55,7 +55,7 @@ export function useNewsTimeline(
           id,
           type: "circle",
           source: "news-events",
-          filter: ["literal", false] as unknown as mapboxgl.FilterSpecification,
+          filter: ["literal", false] as unknown as FilterSpecification,
           paint: {
             "circle-radius": 8,
             "circle-color": "transparent",
@@ -64,7 +64,7 @@ export function useNewsTimeline(
             "circle-stroke-opacity": 0,
             "circle-opacity": 0,
           },
-        } as mapboxgl.CircleLayer,
+        } as CircleLayerSpecification,
         before,
       );
     }
@@ -82,7 +82,7 @@ export function useNewsTimeline(
         const showFilter = ["<=", ["get", "published_ts"], currentTime];
         for (const layerId of NEWS_LAYER_IDS) {
           if (map.getLayer(layerId)) {
-            map.setFilter(layerId, showFilter as unknown as mapboxgl.FilterSpecification);
+            map.setFilter(layerId, showFilter as unknown as FilterSpecification);
           }
         }
       } else {
@@ -110,13 +110,13 @@ export function useNewsTimeline(
         ];
         for (const id of RIPPLE_IDS) {
           if (map.getLayer(id)) {
-            map.setFilter(id, rippleFilter as unknown as mapboxgl.FilterSpecification);
+            map.setFilter(id, rippleFilter as unknown as FilterSpecification);
           }
         }
       } else {
         for (const id of RIPPLE_IDS) {
           if (map.getLayer(id)) {
-            map.setFilter(id, ["literal", false] as unknown as mapboxgl.FilterSpecification);
+            map.setFilter(id, ["literal", false] as unknown as FilterSpecification);
           }
         }
       }

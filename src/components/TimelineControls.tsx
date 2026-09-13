@@ -43,14 +43,21 @@ const getBtnStyle = (dark: boolean): React.CSSProperties => ({
 });
 
 const getSelectStyle = (dark: boolean): React.CSSProperties => ({
-  background: dark ? "rgba(120,120,120,0.35)" : "rgba(255,255,255,0.9)",
-  color: dark ? "rgba(220,220,220,0.9)" : "#555",
-  border: `1px solid ${dark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.08)"}`,
+  // 用不透明實色底：native <select> 下拉浮層在 Chromium 會沿用 select 的 background-color，
+  // 半透明底會讓 option 文字幾乎看不到（見回饋）。
+  background: dark ? "#2a2d34" : "#ffffff",
+  color: dark ? "#eaeaea" : "#333",
+  border: `1px solid ${dark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.12)"}`,
   borderRadius: RADIUS.md,
   padding: "4px 8px",
   fontSize: FONT_SIZE.lg,
   fontFamily: FONT_DATA,
-  backdropFilter: "blur(8px)",
+});
+
+/** 明確給 <option> 實色底＋可讀字，避免下拉浮層在不同瀏覽器不可讀。 */
+export const getOptionStyle = (dark: boolean): React.CSSProperties => ({
+  background: dark ? "#2a2d34" : "#ffffff",
+  color: dark ? "#eaeaea" : "#333",
 });
 
 /** 用台灣時區格式化時間，避免瀏覽器本地時區偏差 */
@@ -229,13 +236,13 @@ export function TimelineControls({
           style={{ ...getSelectStyle(dark), fontSize: FONT_SIZE.base, padding: "3px 4px" }}
           title="顯示天數"
         >
-          <option value={1}>1d</option>
-          <option value={2}>2d</option>
-          <option value={3}>3d</option>
-          <option value={4}>4d</option>
-          <option value={5}>5d</option>
-          <option value={6}>6d</option>
-          <option value={7}>7d</option>
+          <option style={getOptionStyle(dark)} value={1}>1d</option>
+          <option style={getOptionStyle(dark)} value={2}>2d</option>
+          <option style={getOptionStyle(dark)} value={3}>3d</option>
+          <option style={getOptionStyle(dark)} value={4}>4d</option>
+          <option style={getOptionStyle(dark)} value={5}>5d</option>
+          <option style={getOptionStyle(dark)} value={6}>6d</option>
+          <option style={getOptionStyle(dark)} value={7}>7d</option>
         </select>
       </div>
 
@@ -324,13 +331,13 @@ export function TimelineControls({
             onChange={(e) => onSpeedChange(Number(e.target.value))}
             style={getSelectStyle(dark)}
           >
-            <option value={30}>30x</option>
-            <option value={60}>60x</option>
-            <option value={120}>120x</option>
-            <option value={300}>300x</option>
-            <option value={600}>600x</option>
-            <option value={1800}>1800x</option>
-            <option value={3600}>3600x</option>
+            <option style={getOptionStyle(dark)} value={30}>30x</option>
+            <option style={getOptionStyle(dark)} value={60}>60x</option>
+            <option style={getOptionStyle(dark)} value={120}>120x</option>
+            <option style={getOptionStyle(dark)} value={300}>300x</option>
+            <option style={getOptionStyle(dark)} value={600}>600x</option>
+            <option style={getOptionStyle(dark)} value={1800}>1800x</option>
+            <option style={getOptionStyle(dark)} value={3600}>3600x</option>
           </select>
 
           <span

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { CircleLayer, Map as MapboxMap } from "mapbox-gl";
+import type { CircleLayerSpecification, Map as MapboxMap } from "maplibre-gl";
 import {
   aisstreamToGeoJSON,
   fetchAisstreamVessels,
@@ -50,7 +50,7 @@ function ensureSources(map: MapboxMap): void {
         "circle-stroke-width": 0.7,
       },
       layout: { visibility: "none" },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
   if (!map.getLayer(GFW_LAYER)) {
     map.addLayer({
@@ -65,7 +65,7 @@ function ensureSources(map: MapboxMap): void {
         "circle-stroke-width": 0.7,
       },
       layout: { visibility: "none" },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 }
 

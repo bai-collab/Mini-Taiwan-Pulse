@@ -1,6 +1,7 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, Map as MapboxMap } from "maplibre-gl";
 import { GlowPointsScene, type GlowPoint } from "../three/GlowPointsScene";
 import { fuelColorOf, type FacilityPoint } from "../data/energyLoader";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export interface PowerPlantGlowLayerOptions {
   getIsVisible: () => boolean;
@@ -38,7 +39,8 @@ export function createPowerPlantGlowLayer(
       scene.init(gl);
     },
 
-    render(_gl, matrix) {
+    render(_gl, renderInput) {
+      const matrix = customLayerMatrix(renderInput);
       const visible = opts.getIsVisible();
       scene.setVisible(visible);
       if (!visible) return;

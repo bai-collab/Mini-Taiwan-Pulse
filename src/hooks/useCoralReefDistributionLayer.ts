@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { CORAL_REEF_ATTRIBUTION, CORAL_REEF_COLOR, CORAL_REEF_SOURCE_URL } from "../data/coralReefTypes";
 import { loadingRegistry } from "../lib/loadingRegistry";
-import { PRIVATE_CORAL_PMTILES_SOURCE_TYPE, registerPrivateCoralSourceOnce } from "../map/privateCoralPmtiles";
+import { createPrivateCoralPmtilesUrl, registerPrivateCoralSourceOnce } from "../map/privateCoralPmtiles";
 import { useCoralPrivateAccess, coralAccessToken } from "./useCoralPrivateAccess";
 import { useMapReadyTick } from "./useMapReadyTick";
 
@@ -21,6 +21,7 @@ export function mountCoralReefDistribution(
   let failed = false;
   let loading = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let privateSource: { url: string; dispose: () => void } | undefined;
   const finish = () => {
     clearTimeout(timer);
     if (loading) loadingRegistry.end(TASK);
@@ -61,10 +62,13 @@ export function mountCoralReefDistribution(
   begin();
   try {
     registerPrivateCoralSourceOnce();
-    map.addSource(CORAL_SOURCE_ID, {
-      type: PRIVATE_CORAL_PMTILES_SOURCE_TYPE,
-      getToken,
+    privateSource = createPrivateCoralPmtilesUrl({
       url: new URL(CORAL_REEF_SOURCE_URL, window.location.href).href,
+      getToken,
+    });
+    map.addSource(CORAL_SOURCE_ID, {
+      type: "vector",
+      url: privateSource.url,
       minzoom: 0, maxzoom: 12,
     } as unknown as Parameters<MapboxMap["addSource"]>[1]);
     // mapbox-pmtiles bypasses TileJSON's attribution assignment.
@@ -78,6 +82,8 @@ export function mountCoralReefDistribution(
       paint: { "line-color": CORAL_REEF_COLOR, "line-opacity": opacity,
         "line-width": ["interpolate", ["linear"], ["zoom"], 0, 0.4, 10, 1] } });
   } catch {
+    privateSource?.dispose();
+    privateSource = undefined;
     fail();
   }
   return () => {
@@ -91,6 +97,8 @@ export function mountCoralReefDistribution(
     if (map.getLayer(LINE)) map.removeLayer(LINE);
     if (map.getLayer(FILL)) map.removeLayer(FILL);
     if (map.getSource(CORAL_SOURCE_ID)) map.removeSource(CORAL_SOURCE_ID);
+    privateSource?.dispose();
+    privateSource = undefined;
   };
 }
 

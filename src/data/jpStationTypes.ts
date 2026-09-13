@@ -1,4 +1,4 @@
-import type { ExpressionSpecification } from "mapbox-gl";
+import type { ExpressionSpecification } from "maplibre-gl";
 
 // ── 種類（operator_types 正規化）──
 export interface JpStationType { value: string; label: string; color: string; }

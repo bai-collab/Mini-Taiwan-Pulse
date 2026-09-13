@@ -1,5 +1,3 @@
-// PMTiles SourceType 常數（純常數模組，不 import mapbox runtime，
-// 讓 overlayManager 等模組可在 node 測試環境下被 import）。
-// 值必須與 mapbox-pmtiles 的 PmTilesSource.SOURCE_TYPE 一致，
-// pmtilesSourceType.ts 註冊時會 dev-assert。
-export const PMTILES_SOURCE_TYPE = "pmtile-source";
+// MapLibre 以內建 vector/raster source 搭配 pmtiles:// protocol。
+// 保留常數名稱，讓既有 factory 不必全部改名；它不再是自訂 source type。
+export const PMTILES_SOURCE_TYPE = "vector";

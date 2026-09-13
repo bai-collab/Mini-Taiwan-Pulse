@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { Map as MapboxMap, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource } from "maplibre-gl";
 import { fetchA1AccidentsRealtime } from "../data/a1AccidentRealtimeLoader";
 import { wallClock } from "../state/timeStore";
 import { useMapReadyTick } from "./useMapReadyTick";

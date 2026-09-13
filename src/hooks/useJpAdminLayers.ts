@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import type { Map as MapboxMap, FillLayer, LineLayer, ExpressionSpecification } from "mapbox-gl";
+import type { Map as MapboxMap, FillLayerSpecification, LineLayerSpecification, ExpressionSpecification } from "maplibre-gl";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { useMapReadyTick } from "./useMapReadyTick";
 
 const PREFECTURE_SOURCE_ID = "jp-admin-prefecture";
@@ -32,10 +32,10 @@ function clampOpacity(opacity: number): number {
 
 function absoluteUrl(relativeFile: string): string {
   const relative = `${import.meta.env.BASE_URL ?? "/"}world/${relativeFile}`;
-  return new URL(relative, window.location.href).href;
+  return pmtilesUrl(relative);
 }
 
-function fillLayer(id: string, source: string, sourceLayer: string, color: string, opacity: number): FillLayer {
+function fillLayer(id: string, source: string, sourceLayer: string, color: string, opacity: number): FillLayerSpecification {
   return {
     id,
     type: "fill",
@@ -46,10 +46,10 @@ function fillLayer(id: string, source: string, sourceLayer: string, color: strin
       "fill-color": color,
       "fill-opacity": clampOpacity(opacity),
     },
-  } as FillLayer;
+  } as FillLayerSpecification;
 }
 
-function lineLayer(id: string, source: string, sourceLayer: string, color: string): LineLayer {
+function lineLayer(id: string, source: string, sourceLayer: string, color: string): LineLayerSpecification {
   return {
     id,
     type: "line",
@@ -61,7 +61,7 @@ function lineLayer(id: string, source: string, sourceLayer: string, color: strin
       "line-opacity": 0.6,
       "line-width": LINE_WIDTH,
     },
-  } as LineLayer;
+  } as LineLayerSpecification;
 }
 
 interface AdminPolygonConfig {

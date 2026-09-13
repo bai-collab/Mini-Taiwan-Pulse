@@ -1,9 +1,9 @@
 import type {
   Map as MapboxMap,
-  CircleLayer,
-  HeatmapLayer,
+  CircleLayerSpecification,
+  HeatmapLayerSpecification,
   ExpressionSpecification,
-} from "mapbox-gl";
+} from "maplibre-gl";
 import {
   fetchRainGaugeDay,
   type RainGaugeDayRow,
@@ -175,7 +175,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "heatmap-radius": heatmapRadiusExpression(),
         "heatmap-opacity": heatmapOpacityExpression(),
       },
-    } as HeatmapLayer);
+    } as HeatmapLayerSpecification);
   }
   // ② glow circle（近景輔助，站點位置光暈）
   if (!map.getLayer(LAYER_GLOW)) {
@@ -189,7 +189,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-blur": 0.8,
         "circle-opacity": circleZoomOpacity((isDark ? 0.25 : 0.2) * opacity),
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
   // ③ main circle（近景主打，精確測站位置）
   if (!map.getLayer(LAYER_CIRCLE)) {
@@ -205,7 +205,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-stroke-color": "#ffffff",
         "circle-stroke-opacity": circleZoomOpacity(0.4 * opacity),
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 }
 

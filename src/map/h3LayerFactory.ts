@@ -1,5 +1,5 @@
 import { cellToBoundary } from "h3-js";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { GeoJSONSource, Map as MapboxMap } from "maplibre-gl";
 import type { H3CellData } from "../data/h3Loader";
 
 const SOURCE_ID = "h3-population-src";
@@ -182,7 +182,7 @@ export function updateH3Layer(
   visible: boolean,
 ): void {
   ensureH3Layers(map);
-  const source = map.getSource(SOURCE_ID);
+  const source = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
   if (!source || source.type !== "geojson") return;
 
   // Geometry/data only change when the cells or data-derived parameters do.

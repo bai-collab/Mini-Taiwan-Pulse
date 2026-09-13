@@ -1,5 +1,6 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapboxMap } from "maplibre-gl";
 import { LighthouseScene } from "../three/LighthouseScene";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export interface LighthouseLayerOptions {
   getPositions: () => [number, number][];
@@ -26,7 +27,8 @@ export function createLighthouseLayer(opts: LighthouseLayerOptions): CustomLayer
       scene.init(gl);
     },
 
-    render(_gl: WebGLRenderingContext, matrix: number[]) {
+    render(_gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      const matrix = customLayerMatrix(renderInput);
       if (!initialized) {
         const positions = opts.getPositions();
         if (positions.length > 0) {

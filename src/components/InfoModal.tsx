@@ -998,7 +998,7 @@ const PAGE_TITLES: Record<string, Record<Lang, string>> = {
   "data-sources": { zh: "資料來源", en: "Data Sources" },
   "daily-changelog": { zh: "每日更新", en: "Daily Changelog" },
   about: { zh: "關於專案", en: "About" },
-  profile: { zh: "個人介紹", en: "Profile" },
+  profile: { zh: "參考作者資料", en: "Reference Author" },
 };
 
 /* ── 主元件 ── */
@@ -1024,7 +1024,7 @@ export function InfoModal({ open, onClose, isMobile, isDarkTheme = true }: InfoM
   const bottomTabs: { key: BottomTab; label: Record<Lang, string> }[] = [
     { key: "guide", label: { zh: "指南", en: "Guide" } },
     { key: "about", label: { zh: "關於", en: "About" } },
-    { key: "profile", label: { zh: "個人", en: "Profile" } },
+    { key: "profile", label: { zh: "參考作者資料", en: "Reference Author" } },
   ];
 
   function renderContent() {

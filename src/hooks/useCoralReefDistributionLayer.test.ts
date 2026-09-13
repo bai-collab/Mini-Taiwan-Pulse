@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { loadingRegistry } from "../lib/loadingRegistry";
 import { mountCoralReefDistribution, CORAL_SOURCE_ID } from "./useCoralReefDistributionLayer";
-vi.mock("../map/privateCoralPmtiles", () => ({ registerPrivateCoralSourceOnce: vi.fn(), PRIVATE_CORAL_PMTILES_SOURCE_TYPE: "private-coral-pmtile-source" }));
+vi.mock("../map/privateCoralPmtiles", () => ({
+  registerPrivateCoralSourceOnce: vi.fn(),
+  createPrivateCoralPmtilesUrl: vi.fn(() => ({ url: "private-coral://test", dispose: vi.fn() })),
+  PRIVATE_CORAL_PMTILES_SOURCE_TYPE: "vector",
+}));
 function mockMap() {
   const listeners = new Map<string, Set<(event: unknown) => void>>();
   const sources = new Map<string, unknown>();

@@ -10,7 +10,7 @@
 //   - 跨日 subscribeDate、切片 subscribeThrottled、同步讀 getTime()
 
 import { useEffect } from "react";
-import type { Map as MapboxMap, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource } from "maplibre-gl";
 import { keepLoadingUntilMapIdle } from "../../lib/loadingRegistry";
 import { timeStore as realTimeStore } from "../../state/timeStore";
 import { useMapReadyTick } from "../useMapReadyTick";

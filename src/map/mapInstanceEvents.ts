@@ -1,4 +1,4 @@
-import type { Map as MapboxMap, MapMouseEvent } from "mapbox-gl";
+import type { Map as MapboxMap, MapMouseEvent } from "maplibre-gl";
 
 interface Callbacks {
   onStart(): void;

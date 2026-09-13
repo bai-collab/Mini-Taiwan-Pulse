@@ -14,7 +14,7 @@
  * 真正的 3D altitude 只對 Three.js scene 有效。
  */
 
-import type { Map as MapboxMap, GeoJSONSource, MapLayerMouseEvent } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource, MapLayerMouseEvent } from "maplibre-gl";
 import type { FeatureInfo, LayerVisibility } from "../types";
 import {
   WASTE_FACILITY_COLORS,

@@ -7,10 +7,10 @@
 //
 // 縣市下拉（params.countyIdx）→ setFilter 切換：全台(0) 顯示全國聚合、其餘顯示單一縣市。
 
-import type { Map as MapboxMap, FilterSpecification } from "mapbox-gl";
+import type { Map as MapboxMap, FilterSpecification } from "maplibre-gl";
 import { fireIsochroneCountyByIndex } from "../data/fireIsochroneCounties";
 // PMTiles SourceType 註冊統一走 pmtilesSourceType.ts（所有 PMTiles 圖層共用）
-import { registerPmtilesSourceTypeOnce } from "./pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "./pmtilesSourceType";
 import { PMTILES_SOURCE_TYPE } from "./pmtilesConstants";
 
 const BASE = `${import.meta.env.BASE_URL ?? "/"}fire`;
@@ -49,7 +49,7 @@ export function ensureFireIsochroneLayer(map: MapboxMap): void {
   if (!map.getSource(SOURCE_ID)) {
     map.addSource(SOURCE_ID, {
       type: PMTILES_SOURCE_TYPE,
-      url: `${BASE}/fire_isochrone_coverage.pmtiles`,
+      url: pmtilesUrl(`${BASE}/fire_isochrone_coverage.pmtiles`),
       minzoom: 5,
       maxzoom: 14,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

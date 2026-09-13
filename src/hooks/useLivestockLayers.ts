@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { Map as MapboxMap, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource } from "maplibre-gl";
 import type { LayerVisibility } from "../types";
 import { fetchLivestockFarms, fetchLivestockSlaughterhouses } from "../data/livestockLoader";
 import { isAccessDenied } from "../lib/layerGates";

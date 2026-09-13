@@ -21,6 +21,7 @@
 import { useCallback, useSyncExternalStore } from "react";
 import type { LayerVisibility } from "../types";
 import { LAYER_COLORS } from "../components/sidebar/layerCatalog";
+import { trimmedPulseLayerAllowlist } from "../config/trimmedPulseConfig";
 
 type Listener = () => void;
 type VisKey = keyof LayerVisibility;
@@ -86,13 +87,16 @@ export const layerVisibilityStore = {
 
   /** 設定單一 key。同值 no-op。 */
   setVisibility(key: VisKey, value: boolean): void {
-    if (snapshot[key] === value) return;
-    applyChanges([key], { ...snapshot, [key]: value });
+    const nextValue = value && !trimmedPulseLayerAllowlist.has(key) ? false : value;
+    if (snapshot[key] === nextValue) return;
+    applyChanges([key], { ...snapshot, [key]: nextValue });
   },
 
   /** 反轉單一 key。 */
   toggle(key: VisKey): void {
-    applyChanges([key], { ...snapshot, [key]: !snapshot[key] });
+    const nextValue = !snapshot[key] && trimmedPulseLayerAllowlist.has(key);
+    if (snapshot[key] === nextValue) return;
+    applyChanges([key], { ...snapshot, [key]: nextValue });
   },
 
   /** 批次設定（只寫入 partial 提到的 key）。同值的 key 不會觸發其 per-key listener。 */
@@ -102,7 +106,9 @@ export const layerVisibilityStore = {
     for (const k of Object.keys(partial) as VisKey[]) {
       const v = partial[k];
       if (v === undefined || snapshot[k] === v) continue;
-      next[k] = v;
+      const nextValue = v && !trimmedPulseLayerAllowlist.has(k) ? false : v;
+      if (snapshot[k] === nextValue) continue;
+      next[k] = nextValue;
       changed.push(k);
     }
     applyChanges(changed, next);
@@ -114,11 +120,14 @@ export const layerVisibilityStore = {
    */
   setAll(next: LayerVisibility): void {
     if (next === snapshot) return;
+    const normalized = { ...snapshot };
     const changed: VisKey[] = [];
     for (const k of Object.keys(snapshot) as VisKey[]) {
-      if (snapshot[k] !== next[k]) changed.push(k);
+      const nextValue = next[k] && !trimmedPulseLayerAllowlist.has(k) ? false : next[k];
+      if (snapshot[k] !== nextValue) changed.push(k);
+      normalized[k] = nextValue;
     }
-    applyChanges(changed, next);
+    applyChanges(changed, normalized);
   },
 
   /** 訂閱任何 key 的變動（整包消費者用，例如 MapView 的 overlay hydrate）。 */

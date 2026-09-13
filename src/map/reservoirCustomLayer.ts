@@ -1,7 +1,8 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapboxMap } from "maplibre-gl";
 import * as THREE from "three";
 import { ReservoirScene } from "../three/ReservoirScene";
 import type { ReservoirStatus } from "../data/reservoirStatusLoader";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export interface ReservoirCustomLayerOptions {
   scene: ReservoirScene;
@@ -42,7 +43,8 @@ export function createReservoirLayer(opts: ReservoirCustomLayerOptions): CustomL
       opts.scene.init(renderer);
     },
 
-    render(_gl: WebGLRenderingContext, matrix: number[]) {
+    render(_gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      const matrix = customLayerMatrix(renderInput);
       if (!initialized) {
         const list = opts.getStatuses();
         if (list.length > 0) {

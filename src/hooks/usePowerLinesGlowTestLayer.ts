@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap, GeoJSONSource, ExpressionSpecification } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource, ExpressionSpecification } from "maplibre-gl";
 import { useMapReadyTick } from "./useMapReadyTick";
 import {
   fetchOsmPowerLines,
@@ -73,7 +73,7 @@ function setVis(map: MapboxMap, id: string, on: boolean) {
   if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
 }
 function safeIsStyleLoaded(map: MapboxMap): boolean {
-  try { return map.isStyleLoaded(); } catch { return false; }
+  try { return map.isStyleLoaded() === true; } catch { return false; }
 }
 
 export function usePowerLinesGlowTestLayer(

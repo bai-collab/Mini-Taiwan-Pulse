@@ -4,7 +4,7 @@
  * 包一層薄的 helper，方便 hook 動態 add/updateImage/remove。
  */
 
-import type { Map as MapboxMap, ImageSource, RasterLayer } from "mapbox-gl";
+import type { Map as MapboxMap, ImageSource, RasterLayerSpecification } from "maplibre-gl";
 
 export interface CwaImageryBBox {
   lonMin: number;
@@ -75,7 +75,7 @@ export function createCwaImageryLayer(
           layout: {
             visibility: currentVisible ? "visible" : "none",
           },
-        } as RasterLayer,
+        } as RasterLayerSpecification,
         opts.beforeId,
       );
     }

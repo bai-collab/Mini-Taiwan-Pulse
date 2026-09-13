@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { CircleLayer, ExpressionSpecification, GeoJSONSource, LineLayer, Map as MapboxMap } from "mapbox-gl";
+import type { CircleLayerSpecification, ExpressionSpecification, GeoJSONSource, LineLayerSpecification, Map as MapboxMap } from "maplibre-gl";
 import {
   gfwHourlyTracksFrame,
   gfwHourlyTrackFrameTrail,
@@ -67,7 +67,7 @@ function ensureLayers(map: MapboxMap, isDarkTheme: boolean): void {
         "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.7, 7, 1.5, 11, 2.8],
         "line-opacity": 0.55,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
   if (!map.getLayer(GFW_HOURLY_TRACKS_ENDPOINT_LAYER_ID)) {
     map.addLayer({
@@ -91,7 +91,7 @@ function ensureLayers(map: MapboxMap, isDarkTheme: boolean): void {
         "circle-stroke-opacity": 0.9,
       },
       layout: { visibility: "none" },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 }
 

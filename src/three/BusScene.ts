@@ -43,6 +43,10 @@ export class BusScene {
   renderer!: THREE.WebGLRenderer;
 
   private instancedMesh: THREE.InstancedMesh | null = null;
+  private outlineMesh: THREE.InstancedMesh | null = null;
+  private glowPoints: THREE.Points | null = null;
+  private glowPositions: THREE.BufferAttribute | null = null;
+  private glowColors: THREE.BufferAttribute | null = null;
   private alphaAttribute: THREE.InstancedBufferAttribute | null = null;
   private maxInstances: number;
   private isDarkTheme = true;
@@ -50,6 +54,7 @@ export class BusScene {
   private altOffset = 0;
   /** 圖層控制的倍率；保留依主題決定的原始透明度。 */
   private opacityMultiplier = 1;
+  private accentColor = new THREE.Color("#00e5ff");
 
   private colorCache = new Map<string, THREE.Color>();
   private busPositions = new Map<number, BusVehicle>(); // instanceIndex → bus
@@ -115,6 +120,48 @@ export class BusScene {
       3,
     );
     this.scene.add(this.instancedMesh);
+
+    // 放大背面輪廓：讓公車在一般底圖、縣界、等高線與陰影上都能辨識。
+    const outlineMaterial = new THREE.MeshBasicMaterial({
+      color: "#ffffff",
+      transparent: true,
+      opacity: 0.95,
+      side: THREE.BackSide,
+      depthWrite: false,
+      depthTest: false,
+    });
+    this.outlineMesh = new THREE.InstancedMesh(geo.clone(), outlineMaterial, this.maxInstances);
+    this.outlineMesh.frustumCulled = false;
+    this.outlineMesh.count = 0;
+    this.scene.add(this.outlineMesh);
+
+    // 輕量 halo：保持與主站相同的 additive 光感，但不用另開 canvas。
+    // PointsMaterial 的 sizeAttenuation=false 讓窄螢幕縮放時仍看得見車輛。
+    const glowGeometry = new THREE.BufferGeometry();
+    this.glowPositions = new THREE.BufferAttribute(
+      new Float32Array(this.maxInstances * 3),
+      3,
+    );
+    this.glowColors = new THREE.BufferAttribute(
+      new Float32Array(this.maxInstances * 3),
+      3,
+    );
+    glowGeometry.setAttribute("position", this.glowPositions);
+    glowGeometry.setAttribute("color", this.glowColors);
+    glowGeometry.setDrawRange(0, 0);
+    const glowMaterial = new THREE.PointsMaterial({
+      size: 28,
+      sizeAttenuation: false,
+      transparent: true,
+      opacity: 0.42,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      depthTest: false,
+      vertexColors: true,
+    });
+    this.glowPoints = new THREE.Points(glowGeometry, glowMaterial);
+    this.glowPoints.frustumCulled = false;
+    this.scene.add(this.glowPoints);
   }
 
   setTheme(isDark: boolean) {
@@ -126,10 +173,24 @@ export class BusScene {
       mat.blending = isDark ? THREE.AdditiveBlending : THREE.NormalBlending;
       this.applyMaterialOpacity();
     }
+    if (this.glowPoints) {
+      const mat = this.glowPoints.material as THREE.PointsMaterial;
+      mat.blending = isDark ? THREE.AdditiveBlending : THREE.NormalBlending;
+      this.applyMaterialOpacity();
+    }
   }
 
   setOrbScale(scale: number) {
     this.orbScale = scale;
+  }
+
+  setAccentColor(hex: string) {
+    this.accentColor.set(hex);
+  }
+
+  setOutlineColor(hex: string) {
+    if (!this.outlineMesh) return;
+    (this.outlineMesh.material as THREE.MeshBasicMaterial).color.set(hex);
   }
 
   setAltitudeOffset(offset: number) {
@@ -145,6 +206,12 @@ export class BusScene {
   setOpacity(opacity: number) {
     if (this.instancedMesh) {
       (this.instancedMesh.material as THREE.MeshBasicMaterial).opacity = opacity;
+    }
+    if (this.glowPoints) {
+      (this.glowPoints.material as THREE.PointsMaterial).opacity = opacity * 0.32;
+    }
+    if (this.outlineMesh) {
+      (this.outlineMesh.material as THREE.MeshBasicMaterial).opacity = opacity * 0.9;
     }
   }
 
@@ -162,6 +229,14 @@ export class BusScene {
     const baseOpacity = this.isDarkTheme ? 0.85 : 0.7;
     (this.instancedMesh.material as THREE.MeshBasicMaterial).opacity =
       baseOpacity * this.opacityMultiplier;
+    if (this.glowPoints) {
+      (this.glowPoints.material as THREE.PointsMaterial).opacity =
+        baseOpacity * 0.32 * this.opacityMultiplier;
+    }
+    if (this.outlineMesh) {
+      (this.outlineMesh.material as THREE.MeshBasicMaterial).opacity =
+        0.9 * this.opacityMultiplier;
+    }
   }
 
   private getColor(hex: string): THREE.Color {
@@ -217,6 +292,12 @@ export class BusScene {
       dummy.makeScale(baseScale, baseScale, baseScale);
       dummy.setPosition(fx, fy, fz);
       this.instancedMesh.setMatrixAt(count, dummy);
+      if (this.outlineMesh) {
+        const outlineScale = baseScale * 1.75;
+        dummy.makeScale(outlineScale, outlineScale, outlineScale);
+        dummy.setPosition(fx, fy, fz);
+        this.outlineMesh.setMatrixAt(count, dummy);
+      }
 
       let color: THREE.Color;
       if (colorMode === "speed") {
@@ -232,6 +313,12 @@ export class BusScene {
       }
       this.instancedMesh.instanceColor!.setXYZ(count, color.r, color.g, color.b);
 
+      if (this.glowPositions && this.glowColors) {
+        this.glowPositions.setXYZ(count, fx, fy, fz);
+        const halo = this.accentColor;
+        this.glowColors.setXYZ(count, halo.r, halo.g, halo.b);
+      }
+
       // Per-instance alpha（淡入淡出）
       if (this.alphaAttribute) {
         const a = bus.fadeAlpha ?? 1;
@@ -244,8 +331,17 @@ export class BusScene {
 
     this.instancedMesh.count = count;
     this.instancedMesh.instanceMatrix.needsUpdate = true;
+    if (this.outlineMesh) {
+      this.outlineMesh.count = count;
+      this.outlineMesh.instanceMatrix.needsUpdate = true;
+    }
     if (this.instancedMesh.instanceColor) {
       (this.instancedMesh.instanceColor as THREE.InstancedBufferAttribute).needsUpdate = true;
+    }
+    if (this.glowPoints && this.glowPositions && this.glowColors) {
+      this.glowPoints.geometry.setDrawRange(0, count);
+      this.glowPositions.needsUpdate = true;
+      this.glowColors.needsUpdate = true;
     }
     if (this.alphaAttribute) {
       this.alphaAttribute.needsUpdate = true;
@@ -318,6 +414,20 @@ export class BusScene {
       (this.instancedMesh.material as THREE.Material).dispose();
       this.instancedMesh = null;
     }
+    if (this.outlineMesh) {
+      this.scene.remove(this.outlineMesh);
+      this.outlineMesh.geometry.dispose();
+      (this.outlineMesh.material as THREE.Material).dispose();
+      this.outlineMesh = null;
+    }
+    if (this.glowPoints) {
+      this.scene.remove(this.glowPoints);
+      this.glowPoints.geometry.dispose();
+      (this.glowPoints.material as THREE.Material).dispose();
+      this.glowPoints = null;
+    }
+    this.glowPositions = null;
+    this.glowColors = null;
     this.renderer?.dispose();
     this.colorCache.clear();
     this.busPositions.clear();

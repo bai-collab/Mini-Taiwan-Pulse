@@ -1,14 +1,17 @@
 import type { MapStyle } from "../types";
 import { FONT_DATA, RADIUS, FONT_SIZE } from "../styles/designTokens";
 
+/** 免 token、免綁卡的共用底圖。OpenFreeMap Liberty 供 bbox/embed 沿用；主站用 CARTO GL 免費 style。 */
+export const OPENFREEMAP_LIBERTY_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+/** CARTO 免費 GL style（免 key）：深色 dark-matter / 淺色 positron。與 App 的 isDarkTheme 對齊，避免深色 UI 疊淺底圖對比不足。 */
+const CARTO_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const CARTO_LIGHT = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
+
+// 精簡版只保留兩個有意義的底圖，與 App 的 `isDarkTheme = !["light","streets"]` 對齊：
+// 深色 id → 深底圖（深色 UI 讀得清楚）、淺色 id → 淺底圖。舊網址的其他 id 由 getStyleUrl fallback 到 [0]（深色）。
 export const MAP_STYLES: MapStyle[] = [
-  { id: "black", name: "Pure Black", url: "mapbox://styles/mapbox/dark-v11" },
-  { id: "dark", name: "Dark", url: "mapbox://styles/mapbox/dark-v11" },
-  { id: "light", name: "Light", url: "mapbox://styles/mapbox/light-v11" },
-  { id: "satellite", name: "Satellite", url: "mapbox://styles/mapbox/satellite-v9" },
-  { id: "satellite-streets", name: "Satellite Streets", url: "mapbox://styles/mapbox/satellite-streets-v12" },
-  { id: "nav-night", name: "Navigation Night", url: "mapbox://styles/mapbox/navigation-night-v1" },
-  { id: "streets", name: "Streets", url: "mapbox://styles/mapbox/streets-v12" },
+  { id: "dark", name: "深色地圖", url: CARTO_DARK },
+  { id: "light", name: "淺色地圖", url: CARTO_LIGHT },
 ];
 
 interface Props {

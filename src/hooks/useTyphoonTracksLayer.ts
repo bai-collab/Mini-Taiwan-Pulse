@@ -1,11 +1,11 @@
 import { useEffect, useRef, useCallback, useState } from "react";
 import type {
   Map as MapboxMap,
-  LineLayer,
-  CircleLayer,
+  LineLayerSpecification,
+  CircleLayerSpecification,
   ExpressionSpecification,
   FilterSpecification,
-} from "mapbox-gl";
+} from "maplibre-gl";
 import { useMapReadyTick } from "./useMapReadyTick";
 import { timeStore } from "../state/timeStore";
 import {
@@ -98,7 +98,7 @@ export function useTyphoonTracksLayer(
           "line-width": ["interpolate", ["linear"], ["zoom"], 3, 2, 8, 4.5] as unknown as ExpressionSpecification,
           "line-opacity": 0.95,
         },
-      } as LineLayer);
+      } as LineLayerSpecification);
     }
     if (!map.getLayer(LAYER_LINE_FCST)) {
       map.addLayer({
@@ -113,7 +113,7 @@ export function useTyphoonTracksLayer(
           "line-opacity": 0.8,
           "line-dasharray": [1, 2.5],
         },
-      } as LineLayer);
+      } as LineLayerSpecification);
     }
     if (!map.getLayer(LAYER_POINTS)) {
       map.addLayer({
@@ -129,7 +129,7 @@ export function useTyphoonTracksLayer(
           "circle-stroke-width": ["case", ["==", ["get", "point_type"], "forecast"], 1.5, 0.5] as unknown as ExpressionSpecification,
           "circle-stroke-opacity": 0.9,
         },
-      } as CircleLayer);
+      } as CircleLayerSpecification);
     }
     // 現在位置示意圈：外圈半透明光暈 + 亮環 + 中心點（醒目標出活躍颱風當下位置）
     if (!map.getLayer(LAYER_CURRENT_HALO)) {
@@ -143,7 +143,7 @@ export function useTyphoonTracksLayer(
           "circle-opacity": 0.16,
           "circle-blur": 0.6,
         },
-      } as CircleLayer);
+      } as CircleLayerSpecification);
     }
     if (!map.getLayer(LAYER_CURRENT_RING)) {
       map.addLayer({
@@ -157,7 +157,7 @@ export function useTyphoonTracksLayer(
           "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], 3, 1.5, 8, 3] as unknown as ExpressionSpecification,
           "circle-stroke-opacity": 0.95,
         },
-      } as CircleLayer);
+      } as CircleLayerSpecification);
     }
     if (!map.getLayer(LAYER_CURRENT_DOT)) {
       map.addLayer({
@@ -169,7 +169,7 @@ export function useTyphoonTracksLayer(
           "circle-color": "#fde047",
           "circle-opacity": 1,
         },
-      } as CircleLayer);
+      } as CircleLayerSpecification);
     }
     layersReadyRef.current = true;
     return true;

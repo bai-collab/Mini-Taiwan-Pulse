@@ -1,8 +1,6 @@
 import { useEffect, useRef } from "react";
-import mapboxgl from "mapbox-gl";
-import type { Map as MapboxMap, FilterSpecification } from "mapbox-gl";
-// @ts-expect-error 套件未提供 ESM build 的型別宣告
-import { PmTilesSource } from "mapbox-pmtiles/dist/mapbox-pmtiles.js";
+import type { Map as MapboxMap, FilterSpecification, ExpressionSpecification } from "maplibre-gl";
+import { pmtilesUrl, registerPmtilesProtocolOnce } from "../map/pmtilesSourceType";
 import { fetchFloodSensorLatest, type FloodSensorRow } from "../data/floodSensorLoader";
 import { useMapReadyTick } from "./useMapReadyTick";
 
@@ -21,20 +19,9 @@ import { useMapReadyTick } from "./useMapReadyTick";
  * 若 PMTiles 檔不存在（osmnx pipeline 尚未跑），fetch 會 404 但 layer 不會出錯，只是看不到。
  */
 
-const SOURCE_TYPE = (PmTilesSource as unknown as { SOURCE_TYPE: string }).SOURCE_TYPE;
-
-let sourceTypeRegistered = false;
+const SOURCE_TYPE = "vector";
 function registerSourceTypeOnce() {
-  if (sourceTypeRegistered) return;
-  sourceTypeRegistered = true;
-  try {
-    const Style = (mapboxgl as unknown as {
-      Style: { setSourceType: (t: string, impl: unknown) => void };
-    }).Style;
-    Style.setSourceType(SOURCE_TYPE, PmTilesSource);
-  } catch {
-    // 其他 PMTiles factory 已註冊過
-  }
+  registerPmtilesProtocolOnce();
 }
 
 const BASE = `${import.meta.env.BASE_URL ?? "/"}flood`;
@@ -60,12 +47,12 @@ function buildColorExpression(rows: FloodSensorRow[]) {
   }
   // mapbox match 至少需 1 對 (input,output)，若全部站都 0 cm → 退回單一常數
   if (pairs.length === 0) {
-    return DEFAULT as unknown as mapboxgl.ExpressionSpecification;
+    return DEFAULT as unknown as ExpressionSpecification;
   }
   const expr: unknown[] = ["match", ["get", "iow_station_id"]];
   for (const [id, color] of pairs) expr.push(id, color);
   expr.push(DEFAULT);
-  return expr as unknown as mapboxgl.ExpressionSpecification;
+  return expr as unknown as ExpressionSpecification;
 }
 
 /** 只顯示雙北（PMTiles features 的 county_name 預期已是「臺北市」/「新北市」）*/
@@ -104,7 +91,7 @@ export function useFloodSensorIsochroneLayer(
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
           type: SOURCE_TYPE,
-          url: `${BASE}/uswg_isochrone_3min.pmtiles`,
+          url: pmtilesUrl(`${BASE}/uswg_isochrone_3min.pmtiles`),
           minzoom: 8,
           maxzoom: 14,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

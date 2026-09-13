@@ -1,4 +1,4 @@
-import type { ExpressionSpecification } from "mapbox-gl";
+import type { ExpressionSpecification } from "maplibre-gl";
 
 /** 日本警察設施的組織層級；順序同 type select 的 index 1–4。 */
 export interface JpPoliceFacilityType {

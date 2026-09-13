@@ -1,4 +1,4 @@
-import type { ExpressionSpecification } from "mapbox-gl";
+import type { ExpressionSpecification } from "maplibre-gl";
 
 export const NETWORK_STRUCTURES_COLORS = {
   carriers: "#f97316",
@@ -31,12 +31,12 @@ export const MATCH_STATUSES = [
   { value: "NOT_EVALUATED", label: "未評估", color: NETWORK_STRUCTURES_COLORS.notEvaluated },
 ] as const;
 
-export const carrierColorExpression: ExpressionSpecification = [
+export const carrierColorExpression = [
   "match", ["get", "carrier_kind"], ...CARRIER_KINDS.flatMap((x) => [x.value, x.color]), NETWORK_STRUCTURES_COLORS.carriers,
-];
-export const comparisonColorExpression: ExpressionSpecification = [
+] as unknown as ExpressionSpecification;
+export const comparisonColorExpression = [
   "match", ["get", "match_status"], ...MATCH_STATUSES.flatMap((x) => [x.value, x.color]), NETWORK_STRUCTURES_COLORS.notEvaluated,
-];
+] as unknown as ExpressionSpecification;
 
 const COMPARISON_STATUS_VALUES = ["all", ...MATCH_STATUSES.map((item) => item.value)];
 

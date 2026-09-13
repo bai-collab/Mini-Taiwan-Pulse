@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { Map as MapboxMap, ImageSource } from "mapbox-gl";
+import type { Map as MapboxMap, ImageSource } from "maplibre-gl";
 import { useMapReadyTick } from "./useMapReadyTick";
 import { timeStore } from "../state/timeStore";
 import { withLoading, keepLoadingUntilMapIdle } from "../lib/loadingRegistry";

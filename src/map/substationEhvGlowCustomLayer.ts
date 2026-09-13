@@ -1,9 +1,10 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, Map as MapboxMap } from "maplibre-gl";
 import { GlowPointsScene, type GlowPoint } from "../three/GlowPointsScene";
 import {
   SUBSTATION_CLASS_COLORS,
   type OsmSubstation,
 } from "../data/energyLoader";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export interface SubstationEhvGlowLayerOptions {
   getIsVisible: () => boolean;
@@ -56,7 +57,8 @@ export function createSubstationEhvGlowLayer(
       scene.init(gl);
     },
 
-    render(_gl, matrix) {
+    render(_gl, renderInput) {
+      const matrix = customLayerMatrix(renderInput);
       const visible = opts.getIsVisible();
       scene.setVisible(visible);
       if (!visible) return;

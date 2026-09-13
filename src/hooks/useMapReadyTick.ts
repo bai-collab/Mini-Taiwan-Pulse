@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 
 /**
  * mapRef 就緒通知 —— 解 layer hook 的「建層 effect 早於 map load」競態。

@@ -8,10 +8,10 @@
 //   medDesert    = 僅 over15（醫療沙漠高亮）
 // 兩者互斥邏輯：medIsochrone ON → 顯示全部；medDesert ON 但 medIsochrone OFF → 僅 over15。
 
-import type { Map as MapboxMap, FilterSpecification } from "mapbox-gl";
+import type { Map as MapboxMap, FilterSpecification } from "maplibre-gl";
 import type { LayerVisibility } from "../types";
 // PMTiles SourceType 註冊統一走 pmtilesSourceType.ts（所有 PMTiles 圖層共用）
-import { registerPmtilesSourceTypeOnce } from "./pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "./pmtilesSourceType";
 import { PMTILES_SOURCE_TYPE } from "./pmtilesConstants";
 
 const BASE = `${import.meta.env.BASE_URL ?? "/"}medical`;
@@ -57,7 +57,7 @@ export function ensureMedicalIsochroneLayers(map: MapboxMap): void {
   if (!map.getSource(SOURCE_ID)) {
     map.addSource(SOURCE_ID, {
       type: PMTILES_SOURCE_TYPE,
-      url: `${BASE}/medical_isochrone.pmtiles`,
+      url: pmtilesUrl(`${BASE}/medical_isochrone.pmtiles`),
       minzoom: 5,
       maxzoom: 14,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

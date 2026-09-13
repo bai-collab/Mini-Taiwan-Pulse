@@ -1,5 +1,6 @@
-import type { CustomLayerInterface, Map as MapboxMap, MapSourceDataEvent } from "mapbox-gl";
+import type { CustomLayerInterface, Map as MapboxMap, MapSourceDataEvent } from "maplibre-gl";
 import { GlowPointsScene, type GlowPoint } from "../three/GlowPointsScene";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 /**
  * 夜景燈光 mode 3 專用的高樓 bloom 疊層 — 在 Mapbox fill「一片橘光」上，
@@ -117,7 +118,8 @@ export function createBuildingsNightBloomLayer(
       map.on("sourcedata", onSourceData);
     },
 
-    render(_gl, matrix) {
+    render(_gl, renderInput) {
+      const matrix = customLayerMatrix(renderInput);
       const visible = opts.getIsVisible();
       scene.setVisible(visible);
       if (!visible) return;

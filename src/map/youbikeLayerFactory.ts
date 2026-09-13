@@ -1,5 +1,5 @@
 import { cellToBoundary } from "h3-js";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { GeoJSONSource, Map as MapboxMap } from "maplibre-gl";
 import type { YoubikeH3CellData } from "../data/youbikeH3Loader";
 
 const SOURCE_ID = "h3-youbike-src";
@@ -133,7 +133,7 @@ export function updateYoubikeLayer(
   visible: boolean,
 ): void {
   ensureYoubikeLayers(map);
-  const source = map.getSource(SOURCE_ID);
+  const source = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
   if (!source || source.type !== "geojson") return;
 
   if (cells.length > 0) {

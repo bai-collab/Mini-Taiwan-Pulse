@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap, GeoJSONSource, ExpressionSpecification } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource, ExpressionSpecification } from "maplibre-gl";
 import { fetchTaipeiSewerLatest, type SewerLatestRow } from "../data/wicTaipeiLoader";
 import { useMapReadyTick } from "./useMapReadyTick";
 

@@ -11,7 +11,7 @@
 //    per-key 快照當 deps —— store 保證「只有這個 key 真的變動時才換 identity」。
 
 import { useCallback, useEffect, useMemo, type RefObject } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { timeStore } from "../../state/timeStore";
 import { updateH3Layer, ensureH3Layers } from "../../map/h3LayerFactory";
 import { ensureYoubikeLayers, updateYoubikeLayer } from "../../map/youbikeLayerFactory";

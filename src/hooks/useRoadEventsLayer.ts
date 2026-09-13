@@ -1,12 +1,13 @@
 import { useEffect, useRef, useCallback } from "react";
 import type {
   Map as MapboxMap,
-  FillLayer,
-  LineLayer,
-  CircleLayer,
+  FillLayerSpecification,
+  LineLayerSpecification,
+  CircleLayerSpecification,
   FilterSpecification,
   ExpressionSpecification,
-} from "mapbox-gl";
+  GeoJSONSource,
+} from "maplibre-gl";
 import {
   fetchRoadEventsDay,
   roadEventsToGeoJSON,
@@ -56,7 +57,7 @@ function buildLayers(map: MapboxMap): boolean {
         "fill-color": ["get", "color"] as unknown as ExpressionSpecification,
         "fill-opacity": 0.22,
       },
-    } as FillLayer);
+    } as FillLayerSpecification);
   }
 
   if (!map.getLayer(LAYER_LINE)) {
@@ -74,7 +75,7 @@ function buildLayers(map: MapboxMap): boolean {
         "line-width": 2,
         "line-opacity": 0.9,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
 
   if (!map.getLayer(LAYER_POINT)) {
@@ -100,7 +101,7 @@ function buildLayers(map: MapboxMap): boolean {
         "circle-stroke-width": 1.5,
         "circle-opacity": 0.9,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 
   return true;
@@ -153,7 +154,7 @@ export function useRoadEventsLayer(
   }, []);
 
   const refreshSource = useCallback((map: MapboxMap, t: number) => {
-    const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    const src = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
     if (!src) return;
     const day = activeDayRef.current ?? [];
     src.setData(roadEventsToGeoJSON(day, t));

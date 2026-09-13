@@ -1,7 +1,8 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapboxMap } from "maplibre-gl";
 import type { WasteScheduleRoute } from "../data/wasteScheduleLoader";
 import { WasteScheduleScene } from "../three/WasteScheduleScene";
 import { WasteMusicNoteScene } from "../three/WasteMusicNoteScene";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 /**
  * 垃圾車表定 Custom Layer (Phase 3 prototype)
@@ -51,7 +52,8 @@ export function createWasteScheduleLayer(opts: WasteScheduleLayerOptions): Custo
       opts.onSceneReady?.(scene, noteScene);
     },
 
-    render(_gl: WebGLRenderingContext, matrix: number[]) {
+    render(_gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      const matrix = customLayerMatrix(renderInput);
       if (!opts.getIsVisible()) return;
 
       const isDark = opts.getIsDarkTheme();

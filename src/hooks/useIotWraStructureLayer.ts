@@ -1,10 +1,10 @@
 import { useEffect, useRef } from "react";
 import type {
   Map as MapboxMap,
-  CircleLayer,
+  CircleLayerSpecification,
   GeoJSONSource,
   ExpressionSpecification,
-} from "mapbox-gl";
+} from "maplibre-gl";
 import {
   fetchIotWraStructureLatest,
   type IotWraLatestRow,
@@ -75,7 +75,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-blur": 0.85,
         "circle-opacity": (isDark ? 0.45 : 0.32) * opacity,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
   if (!map.getLayer(LAYER_CIRCLE)) {
     map.addLayer({
@@ -90,7 +90,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-stroke-color": "#ffffff",
         "circle-stroke-opacity": 0.6 * opacity,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 }
 

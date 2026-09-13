@@ -1,5 +1,5 @@
 import { cellToBoundary } from "h3-js";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { GeoJSONSource, Map as MapboxMap } from "maplibre-gl";
 import type { DemographicH3CellData, SocioeconomicH3CellData, SpatialEconomyH3CellData } from "../data/h3Loader";
 
 // ── Layer IDs ──
@@ -226,7 +226,7 @@ function updateDemographicsLayer(
   visible: boolean,
 ): void {
   ensureSourceAndLayers(map, srcId, fillId, extId);
-  const source = map.getSource(srcId);
+  const source = map.getSource(srcId) as GeoJSONSource | undefined;
   if (!source || source.type !== "geojson") return;
 
   const cachedCells = cells.length === 0 ? EMPTY_CELLS : cells;
@@ -364,7 +364,7 @@ export function updateSocioLayer(
   visible: boolean,
 ): void {
   ensureSourceAndLayers(map, SOCIO_SRC, SOCIO_FILL, SOCIO_EXT);
-  const source = map.getSource(SOCIO_SRC);
+  const source = map.getSource(SOCIO_SRC) as GeoJSONSource | undefined;
   if (!source || source.type !== "geojson") return;
 
   const useLog = params.metric === "im";
@@ -410,7 +410,7 @@ export function updateSpatialLayer(
   visible: boolean,
 ): void {
   ensureSourceAndLayers(map, SPATIAL_SRC, SPATIAL_FILL, SPATIAL_EXT);
-  const source = map.getSource(SPATIAL_SRC);
+  const source = map.getSource(SPATIAL_SRC) as GeoJSONSource | undefined;
   if (!source || source.type !== "geojson") return;
 
   const useLog = params.metric === "hp" || params.metric === "hpr";

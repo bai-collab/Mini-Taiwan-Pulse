@@ -1,6 +1,7 @@
-import type { CustomLayerInterface, Map as MapboxMap } from "mapbox-gl";
+import type { CustomLayerInterface, CustomRenderMethodInput, Map as MapboxMap } from "maplibre-gl";
 import { TemperatureWaveScene } from "../three/TemperatureWaveScene";
 import type { TemperatureGridData } from "../data/temperatureLoader";
+import { customLayerMatrix } from "./maplibreCustomLayer";
 
 export interface TemperatureWaveLayerOptions {
   getData: () => TemperatureGridData | null;
@@ -31,7 +32,8 @@ export function createTemperatureWaveLayer(
       scene.init(gl);
     },
 
-    render(_gl: WebGLRenderingContext, matrix: number[]) {
+    render(_gl: WebGLRenderingContext | WebGL2RenderingContext, renderInput: CustomRenderMethodInput) {
+      const matrix = customLayerMatrix(renderInput);
       if (!opts.getIsVisible()) return;
 
       // 延遲初始化：等資料準備好

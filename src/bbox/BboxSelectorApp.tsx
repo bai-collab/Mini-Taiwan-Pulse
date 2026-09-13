@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
+import { OPENFREEMAP_LIBERTY_STYLE } from "../components/StyleSelector";
 import { Check, Copy, Crosshair, Eye, EyeOff, Hand, RotateCcw } from "lucide-react";
 import {
   bboxDimensionsKm,
@@ -115,7 +116,7 @@ function CoordinateCell({ label, value }: { label: string; value: number }) {
 
 export function BboxSelectorApp() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
   const drawModeRef = useRef(true);
   const dragStartRef = useRef<ScreenPoint | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -148,24 +149,17 @@ export function BboxSelectorApp() {
     const container = containerRef.current;
     if (!container) return;
 
-    const token = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined;
-    if (!token) {
-      setError("找不到 VITE_MAPBOX_TOKEN，請先設定 Mapbox token。");
-      return;
-    }
-
-    mapboxgl.accessToken = token;
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container,
-      style: "mapbox://styles/mapbox/navigation-night-v1",
+      style: OPENFREEMAP_LIBERTY_STYLE,
       center: [126.2, 25.5],
       zoom: 5.4,
       pitch: 0,
       bearing: 0,
-      attributionControl: true,
+      attributionControl: {},
     });
     mapRef.current = map;
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
     const abortController = new AbortController();
 
@@ -230,8 +224,8 @@ export function BboxSelectorApp() {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const parsed = parseGfwTrackCollection(await response.json());
         if (abortController.signal.aborted) return;
-        (map.getSource(GFW_TRACK_SOURCE) as mapboxgl.GeoJSONSource).setData(parsed.collection);
-        (map.getSource(GFW_ENDPOINT_SOURCE) as mapboxgl.GeoJSONSource).setData(parsed.endpoints);
+        (map.getSource(GFW_TRACK_SOURCE) as maplibregl.GeoJSONSource).setData(parsed.collection);
+        (map.getSource(GFW_ENDPOINT_SOURCE) as maplibregl.GeoJSONSource).setData(parsed.endpoints);
         setTrackMetadata(parsed.metadata);
         setTrackLoadState("ready");
         setTrackError(null);
@@ -300,10 +294,10 @@ export function BboxSelectorApp() {
       setDraftRect(null);
     };
 
-    const onTrackClick = (event: mapboxgl.MapLayerMouseEvent) => {
+    const onTrackClick = (event: maplibregl.MapLayerMouseEvent) => {
       const feature = event.features?.[0];
       if (!feature) return;
-      new mapboxgl.Popup({ closeButton: true, maxWidth: "310px", offset: 10 })
+      new maplibregl.Popup({ closeButton: true, maxWidth: "310px", offset: 10 })
         .setLngLat(event.lngLat)
         .setDOMContent(popupContent(feature.properties ?? {}))
         .addTo(map);
@@ -358,7 +352,7 @@ export function BboxSelectorApp() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !mapReady) return;
-    const source = map.getSource(SELECTION_SOURCE) as mapboxgl.GeoJSONSource | undefined;
+    const source = map.getSource(SELECTION_SOURCE) as maplibregl.GeoJSONSource | undefined;
     source?.setData(bbox ? bboxToFeature(bbox) : EMPTY_COLLECTION);
   }, [bbox, mapReady]);
 

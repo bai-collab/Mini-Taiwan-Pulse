@@ -24,7 +24,6 @@
  * triggerRepaint() 驅動動畫 / MercatorCoordinate API 名稱與數值（實測 bit-identical）。
  */
 import maplibregl, { type CustomLayerInterface, type CustomRenderMethodInput } from "maplibre-gl";
-import mapboxgl from "mapbox-gl";
 import * as THREE from "three";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -37,7 +36,7 @@ let altitudeM = 0; // 高度（公尺），驗證 mercator z 軸是否 conformal
 
 // ─────────────────────────────────────────────────────────────
 // 座標轉換：等價替換 src/utils/coordinates.ts 的 mapbox 版本
-// mapboxgl.MercatorCoordinate → maplibregl.MercatorCoordinate
+// MapLibre 的 MercatorCoordinate 可直接供 Three.js custom layer 使用。
 // 兩者 API 完全同名（fromLngLat / meterInMercatorCoordinateUnits）
 // ─────────────────────────────────────────────────────────────
 function toMercatorMaplibre(lng: number, lat: number, altMeters: number) {
@@ -51,7 +50,7 @@ function metersPerUnitMaplibre(lat: number): number {
 
 // ── 雙引擎數值對照（純數學，不需要 mapbox token）──
 function logEngineParity() {
-  const mb = mapboxgl.MercatorCoordinate.fromLngLat(TAIPEI, 1000);
+  const mb = maplibregl.MercatorCoordinate.fromLngLat(TAIPEI, 1000);
   const ml = maplibregl.MercatorCoordinate.fromLngLat(TAIPEI, 1000);
   const parity = {
     mapbox: { x: mb.x, y: mb.y, z: mb.z, mpu: mb.meterInMercatorCoordinateUnits() },

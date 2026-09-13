@@ -207,6 +207,13 @@ export default defineConfig({
     port: 3721,
     strictPort: true,
     proxy: {
+      // 免費航班來源 OpenSky（CORS 只允許自家 origin）→ dev 經同源代理避開跨域。
+      // 前端打 /opensky-proxy/states/all?... → https://opensky-network.org/api/states/all?...
+      "/opensky-proxy": {
+        target: "https://opensky-network.org",
+        changeOrigin: true,
+        rewrite: (path: string) => path.replace(/^\/opensky-proxy/, "/api"),
+      },
       "/api/private-research/coral": { target: "http://127.0.0.1:8789", changeOrigin: false },
       // Python preview deliberately binds localhost and has no CORS headers.
       // Expose it through Vite only under the explicit local preview opt-in.
@@ -229,6 +236,21 @@ export default defineConfig({
         configure: (proxy) => {
           proxy.on("proxyReq", (proxyReq, request) => {
             // 這條只代理公開 release assets；不要把 localhost session 帶到 production origin。
+            proxyReq.removeHeader("authorization");
+            proxyReq.removeHeader("cookie");
+            const range = request.headers.range;
+            if (typeof range === "string") proxyReq.setHeader("range", range);
+          });
+        },
+      },
+      // 嘉義學生版只在選取交通主題後讀取公開省道路況 PMTiles；
+      // 開發伺服器代轉 Range，避免本機 origin 被遠端資產的 CORS 擋住。
+      "/__pulse/road_congestion_highway.pmtiles": {
+        target: "https://mini-taiwan-pulse.itsmigu.com",
+        changeOrigin: true,
+        rewrite: () => "/road/road_congestion_highway.pmtiles",
+        configure: (proxy) => {
+          proxy.on("proxyReq", (proxyReq, request) => {
             proxyReq.removeHeader("authorization");
             proxyReq.removeHeader("cookie");
             const range = request.headers.range;

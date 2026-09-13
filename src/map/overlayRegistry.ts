@@ -1411,7 +1411,9 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   {
     id: "weatherStations",
     opacityParam: "weatherStationsOpacity",
-    sourceUrl: "./geo/weather_stations.geojson",
+    // 本機資料源：CWA CODiS station_list(免key GET)→裁嘉義+運作中 28 站(署屬/自動/雨量/農業站)。
+    // 只有測站「位置」，無即時觀測值(即時觀測需 CWA 授權碼，見 data-source-key-audit.md)。
+    sourceUrl: "./geo/chiayi_weather_stations_cwa.geojson",
     sourceId: "weather-stations",
     rebuildOnParamChange: ["glow", "circle"],
     layers: [
@@ -3117,7 +3119,8 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   // ── 流域 Basin (polygon outline) ──
   {
     id: "waterBasins",
-    sourceUrl: "./geo/water_basins.geojson",
+    // 本機資料源：WRA 河川流域範圍圖 KML(fname=BASIN,WGS84,免key)→裁嘉義 8 流域(八掌溪/朴子溪/北港溪…)。
+    sourceUrl: "./geo/chiayi_basins_wra.geojson",
     sourceId: "water-basins",
     layers: [
       {
@@ -3144,12 +3147,12 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   },
 
   // ── 河川 River (河道多邊形 — 河床面，補齊 river_lines 缺漏的支流) ──
-  // PMTiles 向量切片（原 11MB GeoJSON 全量載入 → 按需載入）
+  // 本機資料源：OSM Overpass 嘉義範圍水體中 water∈{river,stream,canal,drain} 的面（免 key）。
+  // 靜態 GeoJSON，點開圖層才由 hydrateOverlayIfNeeded fetch+setData。
   {
     id: "waterRivers",
-    sourceUrl: "./geo/water_river_polygons.pmtiles",
+    sourceUrl: "./geo/osm_chiayi_river_polygons.geojson",
     sourceId: "water-river-polygons",
-    pmtiles: { sourceLayer: "river_polygons", minzoom: 4, maxzoom: 13 },
     layers: [
       {
         suffix: "glow",
@@ -3182,12 +3185,12 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   },
 
   // ── 河川 River (line, 中央管主流 transmission-like glow) ──
-  // PMTiles 向量切片（原 16MB GeoJSON 全量載入 → 按需載入）
+  // 本機資料源：OSM Overpass 嘉義範圍 waterway∈{river,stream,canal,drain} 線（免 key）。
+  // 靜態 GeoJSON，點開圖層才由 hydrateOverlayIfNeeded fetch+setData。
   {
     id: "waterRivers",
-    sourceUrl: "./geo/water_rivers.pmtiles",
+    sourceUrl: "./geo/osm_chiayi_rivers.geojson",
     sourceId: "water-rivers",
-    pmtiles: { sourceLayer: "rivers", minzoom: 4, maxzoom: 13 },
     layers: [
       {
         suffix: "glow-2",
@@ -3221,13 +3224,15 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
     ],
   },
 
-  // ── 堤防 Levee (amber line — 4,222 筆防洪骨架；status=待建 用 case expression 淡化) ──
-  // PMTiles 向量切片（原 1.9MB GeoJSON → 按需載入；status 屬性保留供 case expression）
+  // ── 堤防 Levee (amber line；status=待建 用 case expression 淡化) ──
+  // 本機資料源：WRA 水利空間資訊平台「中央管河川河堤」KML(fname=rivdike,WGS84,免 key)
+  // → 裁切嘉義 bbox 106 段(嘉義縣/市 80、鄰縣沿共用河川)。欄位 name/levee_type/river/
+  // basin/county/side 已映射 popup；WRA 現存堤防無 status→空(paint case 落預設=正常顯示)。
+  // 靜態 GeoJSON，點開圖層才由 hydrateOverlayIfNeeded fetch+setData。
   {
     id: "waterLevees",
-    sourceUrl: "./geo/water_levees.pmtiles",
+    sourceUrl: "./geo/osm_chiayi_levees_wra.geojson",
     sourceId: "water-levees",
-    pmtiles: { sourceLayer: "levees", minzoom: 5, maxzoom: 13 },
     layers: [
       {
         suffix: "glow",
@@ -3265,9 +3270,10 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   // PMTiles 向量切片（原 6.8MB GeoJSON、29,469 條 → 按需載入；t 屬性保留供 match expression）
   {
     id: "waterCanals",
-    sourceUrl: "./geo/water_canals.pmtiles",
+    // 本機資料源：OSM Overpass 嘉義 waterway∈{canal,ditch}(免key)→689 條灌排線。
+    // 注意：OSM 無「t」引灌分類欄位→paint match 落預設色(非灌溉專用色)，屬預期。
+    sourceUrl: "./geo/chiayi_canals_osm.geojson",
     sourceId: "water-canals",
-    pmtiles: { sourceLayer: "canals", minzoom: 5, maxzoom: 13 },
     layers: [
       {
         suffix: "glow",
@@ -3309,7 +3315,9 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   //   groundwater_region     (9)    地下水分區面      → neutral 灰（僅輪廓薄化）
   {
     id: "waterProtectionZones",
-    sourceUrl: "./geo/water_protection_zones.geojson",
+    // 本機資料源：WRA KML(免key)合併→自來水水質水量保護區(TWQPROT,zone_kind=protection)
+    // ＋地下水第一級(gwconare,control_1)＋第二級(gwconare2,control_2)管制區；裁嘉義 111 面。
+    sourceUrl: "./geo/chiayi_protection_zones_wra.geojson",
     sourceId: "water-protection-zones",
     layers: [
       {
@@ -3358,9 +3366,9 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   {
     id: "waterReservoirs",
     opacityParam: "waterReservoirsOpacity",
-    sourceUrl: "./geo/water_reservoirs.pmtiles",
+    // 本機資料源：WRA 水庫蓄水範圍 KML(fname=ressub,WGS84,免key)→裁嘉義 4 座(蘭潭/仁義潭/鹿寮溪/內埔子)。
+    sourceUrl: "./geo/chiayi_reservoirs_wra.geojson",
     sourceId: "water-reservoir-poly",
-    pmtiles: { sourceLayer: "reservoirs", minzoom: 5, maxzoom: 13 },
     layers: [
       {
         suffix: "glow",
@@ -3399,7 +3407,8 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   {
     id: "waterReservoirs",
     opacityParam: "waterReservoirsOpacity",
-    sourceUrl: "./geo/water_dams.geojson",
+    // 本機資料源：WRA 水庫堰壩位置圖 KML(fname=SWRESOIR,免key)→裁嘉義 5 壩，DAM_H→dam_height_m。
+    sourceUrl: "./geo/chiayi_dams_wra.geojson",
     sourceId: "water-reservoir-dams",
     layers: [
       {
@@ -3457,7 +3466,8 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   // ── 滯洪池 Detention Basin（防洪儲水池，56 點：tainan 45 + taoyuan 11）──
   {
     id: "waterDetentionBasins",
-    sourceUrl: "./geo/water_detention_basins.geojson",
+    // 本機資料源：OSM Overpass 嘉義 basin=detention/retention/infiltration + landuse=basin(免key)→中心點 43 個。
+    sourceUrl: "./geo/chiayi_detention_basins_osm.geojson",
     sourceId: "water-detention-basins",
     layers: [
       {
@@ -3550,9 +3560,10 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   // PMTiles 向量切片（原 80MB GeoJSON → 按需載入；depth_class/county 屬性保留供 paint match）
   {
     id: "waterFloodExtreme",
-    sourceUrl: "./geo/water_flood_extreme.pmtiles",
+    // 本機資料源：WRA 淹水潛勢圖 24hr650mm SHP(fname=flood_650mm_24hr,TWD97/EPSG:3826,免key)
+    // → proj4 反投影 WGS84 + 裁嘉義 103 面。flood_dept 欄位直接對應 depth_class 五級。
+    sourceUrl: "./geo/chiayi_flood_650mm_24hr_wra.geojson",
     sourceId: "water-flood-extreme",
-    pmtiles: { sourceLayer: "flood_extreme", minzoom: 5, maxzoom: 13 },
     layers: [
       {
         suffix: "fill",
@@ -3653,14 +3664,14 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
     ],
   },
 
-  // ── 湖泊 / 埤塘 / 池塘 Lakes & Ponds (OSM natural=water，52,314 面) ──
-  // water 分色（pond/lake/reservoir/basin）；預設濾掉 overlaps_aquaculture=true
-  // （39.1% 與魚塭圖層重疊，避免視覺打架，見上游 lakes_ponds_osm.md）。
+  // ── 湖泊 / 埤塘 / 池塘 Lakes & Ponds (OSM natural=water / landuse=reservoir) ──
+  // 本機資料源：OSM Overpass 嘉義範圍水體面（免 key），water 分色（pond/lake/reservoir/basin）。
+  // 靜態 GeoJSON，點開圖層才由 hydrateOverlayIfNeeded fetch+setData。
+  // overlaps_aquaculture filter 保留：本機 OSM 資料不帶此屬性 → 全部通過。
   {
     id: "lakesPondsOsm",
-    sourceUrl: "./water_resources/lakes_ponds_osm.pmtiles",
+    sourceUrl: "./geo/osm_chiayi_lakes_ponds.geojson",
     sourceId: "lakes-ponds-osm",
-    pmtiles: { sourceLayer: "lakes_ponds_osm", minzoom: 5, maxzoom: 14 },
     filter: ["!=", ["get", "overlaps_aquaculture"], true],
     rebuildOnParamChange: ["lakesPondsOsmOpacity"],
     layers: [
@@ -7821,9 +7832,10 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   //   主等高線 100m 倍數加粗、500m 倍數更粗。欄名 elevation_m 與 dtm20 的 elev_m 不同。
   {
     id: "contour25k",
-    sourceUrl: "./base_map/contour_25k.pmtiles",
+    // 本機資料源：AWS Terrain Tiles(terrarium,免key)z12 DEM→d3-contour 10m 間距→裁嘉義。
+    // 每筆同時帶 elevation_m/elev_m/major，paint 用 elevation_m。西部平原稀疏、東部山區密集。
+    sourceUrl: "./geo/chiayi_contour_25k.geojson",
     sourceId: "base-contour-25k",
-    pmtiles: { sourceLayer: "contour_25k", minzoom: 8, maxzoom: 14 },
     rebuildOnParamChange: ["line"],
     layers: [
       {
@@ -7853,9 +7865,9 @@ export const OVERLAY_REGISTRY: OverlayConfig[] = [
   // ── 等高線 DTM20（elev_m；精度 20m，全臺完整。欄名 elev_m 是 Shapefile 10 字限制縮寫）──
   {
     id: "contourDtm20",
-    sourceUrl: "./base_map/contour_dtm20.pmtiles",
+    // 本機資料源：AWS Terrain Tiles(terrarium,免key)z12 DEM→d3-contour 20m 間距→裁嘉義。
+    sourceUrl: "./geo/chiayi_contour_dtm20.geojson",
     sourceId: "base-contour-dtm20",
-    pmtiles: { sourceLayer: "contour_dtm20", minzoom: 7, maxzoom: 14 },
     rebuildOnParamChange: ["line"],
     layers: [
       {

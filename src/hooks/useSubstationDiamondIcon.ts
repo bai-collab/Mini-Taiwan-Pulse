@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 
 const ICON_ID = "substation-diamond";
 

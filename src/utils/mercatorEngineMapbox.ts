@@ -8,7 +8,7 @@
  * 為什麼不直接寫在 main.tsx body：body 的執行時機晚於**所有** static import 的求值，
  * 若日後有人在某個模組的 top-level 呼叫 toMercator 就會炸。獨立模組沒有這個時序風險。
  */
-import mapboxgl from "mapbox-gl";
+import maplibregl from "maplibre-gl";
 import { setMercatorEngine } from "./coordinates";
 
-setMercatorEngine(mapboxgl.MercatorCoordinate);
+setMercatorEngine(maplibregl.MercatorCoordinate);

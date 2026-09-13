@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import type { Map as MapboxMap, ExpressionSpecification } from "mapbox-gl";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import type { Map as MapboxMap, ExpressionSpecification } from "maplibre-gl";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
 import { useMapReadyTick } from "./useMapReadyTick";
 
@@ -36,7 +36,7 @@ function setVis(map: MapboxMap, id: string, on: boolean) {
 }
 
 function safeIsStyleLoaded(map: MapboxMap): boolean {
-  try { return map.isStyleLoaded(); } catch { return false; }
+  try { return map.isStyleLoaded() === true; } catch { return false; }
 }
 
 export function useSlopeVectorLayer(
@@ -67,7 +67,7 @@ export function useSlopeVectorLayer(
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
           type: PMTILES_SOURCE_TYPE,
-          url: SOURCE_URL,
+          url: pmtilesUrl(SOURCE_URL),
           minzoom: 5,
           maxzoom: 12,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

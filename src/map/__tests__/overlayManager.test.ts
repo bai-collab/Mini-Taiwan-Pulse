@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import {
   diffPaint,
   snapshotPaint,
@@ -367,8 +367,8 @@ describe("addOverlay (pmtiles)", () => {
     const src = calls.find((c) => c.method === "addSource");
     expect(src?.args[0]).toBe("water-rivers");
     expect(src?.args[1]).toMatchObject({
-      type: "pmtile-source",
-      url: "./geo/water_rivers.pmtiles",
+      type: "vector",
+      url: expect.stringMatching(/^pmtiles:\/\//),
       minzoom: 4,
       maxzoom: 13,
     });

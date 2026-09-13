@@ -23,7 +23,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import {
   loadCwaImageryBatch,
   type CwaImageryBundle,
@@ -35,6 +35,7 @@ import {
   type CwaImageryLayerHandle,
 } from "../map/cwaImageryLayer";
 import { timeStore } from "../state/timeStore";
+import { cwaImageryStore, type CwaImageryStatusKey } from "../state/cwaImageryStore";
 import { keepLoadingUntilMapIdle } from "../lib/loadingRegistry";
 import { useMapReadyTick } from "./useMapReadyTick";
 
@@ -42,6 +43,12 @@ const CLOUD_DATASET = "O-C0042-004";
 const RADAR_DATASET = "O-A0058-005";
 // 歷史日抽稀 cadence（分鐘）；今天維持全解析度
 const HISTORY_STEP_MINUTES = 30;
+/** 超過預期 cadence 的舊 frame 不再拿來冒充目前時間。 */
+export const CWA_FRAME_MAX_AGE_MS = HISTORY_STEP_MINUTES * 60_000;
+
+function statusKeyForDataset(dsId: string): CwaImageryStatusKey {
+  return dsId === CLOUD_DATASET ? "cwaCloudImagery" : "cwaRadarImagery";
+}
 
 function todayKey(): string {
   return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
@@ -113,8 +120,8 @@ function evictExcess(
   }
 }
 
-/** 找出時間 <= currentMs 的最近一張 frame（若全部晚於 currentMs 則回傳第一張） */
-function pickFrameForTime(frames: CwaImageryFrame[], currentMs: number): CwaImageryFrame | null {
+/** 找出時間 <= currentMs 的最近一張 frame；早於首張或已超過容許 stale 時間就回傳 null。 */
+export function pickFrameForTime(frames: CwaImageryFrame[], currentMs: number): CwaImageryFrame | null {
   if (frames.length === 0) return null;
   // frames 已依 observedAtMs 升序
   let chosen: CwaImageryFrame | null = null;
@@ -122,7 +129,8 @@ function pickFrameForTime(frames: CwaImageryFrame[], currentMs: number): CwaImag
     if (f.observedAtMs <= currentMs) chosen = f;
     else break;
   }
-  return chosen ?? frames[0]!;
+  if (!chosen) return null;
+  return currentMs - chosen.observedAtMs <= CWA_FRAME_MAX_AGE_MS ? chosen : null;
 }
 
 interface UseCwaImageryLayerOptions {
@@ -160,6 +168,8 @@ export function useCwaImageryLayer({
   // ── Loader / cache 管理 ──
   useEffect(() => {
     disposedRef.current = false;
+    if (!cloudVisible) cwaImageryStore.clear("cwaCloudImagery");
+    if (!radarVisible) cwaImageryStore.clear("cwaRadarImagery");
 
     const stateOf = (dsId: string) =>
       dsId === CLOUD_DATASET ? cloudRef.current : radarRef.current;
@@ -178,9 +188,14 @@ export function useCwaImageryLayer({
 
     /** 載入單一 (dsId, dateKey) 進 cache；foreground=true 才灌 LOADING panel */
     const loadOne = async (dsId: string, dateKey: string, foreground: boolean) => {
+      const statusKey = statusKeyForDataset(dsId);
       const cache = getCache(dsId);
       if (cache.has(dateKey)) {
         touchLRU(getOrder(dsId), dateKey);
+        const cached = cache.get(dateKey);
+        if (foreground && cached && cached.bundle.frames.length === 0) {
+          cwaImageryStore.set(statusKey, { state: "no-data", frameIso: null, error: null });
+        }
         return;
       }
       const inflight = getInflight(dsId);
@@ -193,16 +208,31 @@ export function useCwaImageryLayer({
           if (slot) for (const u of slot.urls.values()) URL.revokeObjectURL(u);
           return;
         }
-        if (!slot) return;
+        if (!slot) {
+          if (foreground) {
+            cwaImageryStore.set(statusKey, { state: "no-data", frameIso: null, error: null });
+          }
+          return;
+        }
         cache.set(dateKey, slot);
         touchLRU(getOrder(dsId), dateKey);
         if (slot.bundle.frames.length === 0) {
           console.warn(`[CWA Imagery] no frames for ${dsId} @ ${dateKey}`);
+          if (foreground) {
+            cwaImageryStore.set(statusKey, { state: "no-data", frameIso: null, error: null });
+          }
         } else {
           console.log(`[CWA Imagery] ${dsId} ${foreground ? "loaded" : "prefetched"} ${slot.bundle.frames.length} frames @ ${dateKey}`);
         }
       } catch (err) {
         console.warn(`[CWA Imagery] load failed ${dsId}@${dateKey}`, err);
+        if (foreground) {
+          cwaImageryStore.set(statusKey, {
+            state: "error",
+            frameIso: null,
+            error: err instanceof Error ? err.message : "CWA 影像載入失敗",
+          });
+        }
       } finally {
         inflight.delete(dateKey);
       }
@@ -221,6 +251,11 @@ export function useCwaImageryLayer({
       if (datasets.length === 0) return;
 
       const fg = datasets.map(async (dsId) => {
+        cwaImageryStore.set(statusKeyForDataset(dsId), {
+          state: "loading",
+          frameIso: null,
+          error: null,
+        });
         await loadOne(dsId, dk, true);
         if (disposedRef.current) return;
         applyActive(stateOf(dsId), dsId, dk);
@@ -293,6 +328,7 @@ export function useCwaImageryLayer({
       layerId: string,
       currentTimeSec: number,
     ) => {
+      const statusKey = statusKeyForDataset(dsId);
       if (!visible) {
         // 軟隱藏：保留 handle + cache + activeDateKey，再開啟只要 setVisible(true)
         // (map.removeLayer/removeSource 在 in-flight 期間有時不生效，setVisible 較穩)
@@ -304,13 +340,35 @@ export function useCwaImageryLayer({
       if (!slot || slot.bundle.frames.length === 0) {
         // 沒資料：handle 仍存在但隱藏（避免顯示空白）
         state.handle?.setVisible(false);
+        if (!["loading", "error"].includes(cwaImageryStore.get(statusKey).state)) {
+          cwaImageryStore.set(statusKey, { state: "no-data", frameIso: null, error: null });
+        }
         return;
       }
 
       const frame = pickFrameForTime(slot.bundle.frames, currentTimeSec * 1000);
-      if (!frame) { state.handle?.setVisible(false); return; }
+      if (!frame) {
+        state.handle?.setVisible(false);
+        const status = cwaImageryStore.get(statusKey);
+        // 已有 frame 但游標落在首張之前或超過允許 stale 間隔時，
+        // 即使 foreground loader 剛結束也要明確顯示「無資料」，不能卡在 loading。
+        if (slot.bundle.frames.length > 0 || !["loading", "error"].includes(status.state)) {
+          cwaImageryStore.set(statusKey, { state: "no-data", frameIso: null, error: null });
+        }
+        return;
+      }
       const url = slot.urls.get(frame.observedAtIso);
-      if (!url) { state.handle?.setVisible(false); return; }
+      if (!url) {
+        state.handle?.setVisible(false);
+        cwaImageryStore.set(statusKey, {
+          state: "error",
+          frameIso: null,
+          error: "目前 frame 缺少影像 URL",
+        });
+        return;
+      }
+
+      cwaImageryStore.set(statusKey, { state: "ready", frameIso: frame.observedAtIso, error: null });
 
       if (!state.handle) {
         state.handle = createCwaImageryLayer(map, {
@@ -344,12 +402,22 @@ export function useCwaImageryLayer({
       // 每個 dataset 各自處理，避免雲圖在 style transition 拋錯時連帶跳過雷達關閉。
       try {
         reconcile(cloudRef.current, CLOUD_DATASET, cloudVisible, cloudOpacity, "cwa-cloud-src", "cwa-cloud-layer", currentTimeSec);
-      } catch {
+      } catch (err) {
+        cwaImageryStore.set("cwaCloudImagery", {
+          state: "error",
+          frameIso: null,
+          error: err instanceof Error ? err.message : "雲圖顯示失敗",
+        });
         scheduleRetry();
       }
       try {
         reconcile(radarRef.current, RADAR_DATASET, radarVisible, radarOpacity, "cwa-radar-src", "cwa-radar-layer", currentTimeSec);
-      } catch {
+      } catch (err) {
+        cwaImageryStore.set("cwaRadarImagery", {
+          state: "error",
+          frameIso: null,
+          error: err instanceof Error ? err.message : "雷達影像顯示失敗",
+        });
         scheduleRetry();
       }
     };

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { GFW_V4_TRACK_BUCKETS, loadGfwV4Release, type GfwV4Release } from "../data/gfwV4ReleaseLoader";
 import { resolveGfwV4SpatialArtifactUrl, type GfwV4SpatialArtifact, type GfwV4SpatialTracksRelease, type GfwV4TrackBucket } from "../data/gfwV4SpatialTracksLoader";
 import { fixedShardViewportTiles, gfwV4ShardSignature, quantizeGfwV4Viewport, selectGfwV4CurrentNextSpatialFrames, type GfwV4SpatialRequest, type GfwV4ShardTile } from "../data/gfwV4SpatialViewport";

@@ -9,7 +9,7 @@ import { useLayerParams } from "../state/layerParamsStore";
 import {
   LAYER_COLORS,
   LAYER_MACRO_GROUPS,
-  THEMES,
+  TRIMMED_PULSE_THEMES,
   themeMacroGroup,
   TRANSPORT_LABELS,
 } from "./sidebar/layerCatalog";
@@ -18,6 +18,8 @@ import { StatisticsModeControl } from "./sidebar/StatisticsModeControl";
 import { StatisticsDetails } from "./sidebar/StatisticsDetails";
 import { isStatisticsLayer } from "../data/regionalStatisticsRecipes";
 import { searchLayers } from "../lib/layerSearch";
+import { trimmedPulseUi } from "../config/trimmedPulseConfig";
+import { TrimmedLayerMeta } from "./sidebar/TrimmedLayerMeta";
 
 // ── Props ──
 
@@ -110,7 +112,7 @@ export function LayerSidebar({
 
   // ── 收合狀態：窄條 ──
   if (collapsed) {
-    const allLayers = THEMES.flatMap((t) => t.groups.flatMap((g) => g.layers));
+    const allLayers = TRIMMED_PULSE_THEMES.flatMap((t) => t.groups.flatMap((g) => g.layers));
     return (
       <div
         onClick={() => setCollapsed(false)}
@@ -227,11 +229,13 @@ function SidebarContent({
   onToggleFavorite?: (key: string) => void;
 }) {
   const [search, setSearch] = useState("");
-  const searchResults = searchLayers(search, { favoriteKeys });
+  const trimmedThemes = TRIMMED_PULSE_THEMES;
+  const trimmedLayerKeys = new Set(trimmedThemes.flatMap((t) => t.groups.flatMap((g) => g.layers.map((l) => l.key))));
+  const searchResults = searchLayers(search, { favoriteKeys, scopeKeys: trimmedLayerKeys });
   const visibleSearchResults = searchResults.slice(0, 50);
   // Theme 摺疊狀態：預設摺疊 defaultCollapsed=true 的（目前僅環境氣候 Environment 預設展開）
   const [collapsedThemes, setCollapsedThemes] = useState<Set<string>>(
-    () => new Set(THEMES.filter((t) => t.defaultCollapsed).map((t) => t.title)),
+    () => new Set(trimmedThemes.filter((t) => t.defaultCollapsed).map((t) => t.title)),
   );
   const toggleTheme = (title: string) => {
     setCollapsedThemes((prev) => {
@@ -259,7 +263,7 @@ function SidebarContent({
         fontFamily: FONT_DATA,
       }}
     >
-      {isMobile && <StatisticsModeControl />}
+      {isMobile && trimmedPulseUi.showStatistics && <StatisticsModeControl />}
       {onMemberToggle && (
         <button
           onClick={onMemberToggle}
@@ -307,6 +311,7 @@ function SidebarContent({
                     {result.label} {locked && <Lock size={12} />}
                   </div>
                   <div style={{ marginTop: 2, color: dimColor, fontSize: baseFontSize - 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{result.description}</div>
+                  <TrimmedLayerMeta layerKey={result.key} color={LAYER_COLORS[result.key]} compact />
                   <div style={{ marginTop: 2, color: dimColor, fontSize: baseFontSize - 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>主題：{result.topics.join("、")} · {result.source}</div>
                 </button>
                 {onToggleFavorite && (
@@ -320,9 +325,9 @@ function SidebarContent({
           </>}
         </div>
       )}
-      {!search.trim() && THEMES.map((theme, index) => {
+      {!search.trim() && trimmedThemes.map((theme, index) => {
         const macroGroup = themeMacroGroup(theme.title);
-        const previousMacroGroup = index > 0 ? themeMacroGroup(THEMES[index - 1]!.title) : null;
+        const previousMacroGroup = index > 0 ? themeMacroGroup(trimmedThemes[index - 1]!.title) : null;
         const macroTitle = macroGroup
           ? LAYER_MACRO_GROUPS.find((group) => group.key === macroGroup)?.title
           : null;
@@ -506,12 +511,15 @@ function SidebarContent({
                       transition: "all 0.15s",
                     }}
                   >
-                    {displayLabel}
-                    {count != null && count > 0 && !locked && (
-                      <span style={{ marginLeft: 4, opacity: 0.5, fontSize: baseFontSize - 1 }}>
-                        {count}
-                      </span>
-                    )}
+                    <span style={{ display: "block" }}>
+                      {displayLabel}
+                      {count != null && count > 0 && !locked && (
+                        <span style={{ marginLeft: 4, opacity: 0.5, fontSize: baseFontSize - 1 }}>
+                          {count}
+                        </span>
+                      )}
+                    </span>
+                    <TrimmedLayerMeta layerKey={key} color={color} />
                   </div>
 
                   {hasDetails && !locked && (

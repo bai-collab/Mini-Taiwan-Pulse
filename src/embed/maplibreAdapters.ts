@@ -8,23 +8,17 @@
  * 這是兩個引擎唯一的**實質**差異；其餘圖層邏輯（189 個 overlay 的 source/layer/paint）
  * 完全共用 `overlayManager`。
  */
-import maplibregl from "maplibre-gl";
-import { Protocol } from "pmtiles";
 import type { OverlayConfig } from "../types";
-
-let registered = false;
+import { pmtilesUrl, registerPmtilesProtocolOnce as registerSharedPmtilesProtocolOnce } from "../map/pmtilesSourceType";
 
 /** 註冊 pmtiles:// protocol（冪等）。建立 Map 之前必須先呼叫。 */
 export function registerPmtilesProtocolOnce(): void {
-  if (registered) return;
-  registered = true;
-  const protocol = new Protocol();
-  maplibregl.addProtocol("pmtiles", protocol.tile);
+  registerSharedPmtilesProtocolOnce();
 }
 
 /** 相對路徑（registry 用 `./fishery/x.pmtiles`）轉絕對 —— protocol handler 需要完整 URL。 */
 export function absoluteUrl(url: string): string {
-  return new URL(url, window.location.href).href;
+  return new URL(url, typeof window === "undefined" ? "http://localhost/" : window.location.href).href;
 }
 
 /**
@@ -37,7 +31,7 @@ export function maplibrePmtilesSource(config: OverlayConfig): Record<string, unk
   const isRaster = !config.pmtiles?.sourceLayer;
   return {
     type: isRaster ? "raster" : "vector",
-    url: `pmtiles://${absoluteUrl(config.sourceUrl)}`,
+    url: pmtilesUrl(config.sourceUrl),
     minzoom: config.pmtiles?.minzoom,
     maxzoom: config.pmtiles?.maxzoom,
     ...(isRaster ? { tileSize: 512 } : {}),

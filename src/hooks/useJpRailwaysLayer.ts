@@ -1,7 +1,7 @@
 import { useEffect } from "react";
-import type { Map as MapboxMap, LineLayer, ExpressionSpecification } from "mapbox-gl";
+import type { Map as MapboxMap, LineLayerSpecification, ExpressionSpecification } from "maplibre-gl";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { useMapReadyTick } from "./useMapReadyTick";
 import { JP_RAILWAY_TYPE_COLOR_EXPRESSION } from "../data/jpRailwayTypes";
 
@@ -25,10 +25,10 @@ function clampOpacity(opacity: number): number {
 
 function absoluteUrl(relativeFile: string): string {
   const relative = `${import.meta.env.BASE_URL ?? "/"}world/${relativeFile}`;
-  return new URL(relative, window.location.href).href;
+  return pmtilesUrl(relative);
 }
 
-function railwayLineLayer(opacity: number): LineLayer {
+function railwayLineLayer(opacity: number): LineLayerSpecification {
   return {
     id: LINE_LAYER_ID,
     type: "line",
@@ -40,7 +40,7 @@ function railwayLineLayer(opacity: number): LineLayer {
       "line-width": LINE_WIDTH,
       "line-opacity": clampOpacity(opacity),
     },
-  } as LineLayer;
+  } as LineLayerSpecification;
 }
 
 /** 日本鐵道路線：單一 PMTiles line 子層，按事業者種別分色，靜態無時間維度。 */

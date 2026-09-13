@@ -1,14 +1,20 @@
 import { attachRegionalStatistics } from "./regionalStatisticsMap";
 import { useEffect, useRef } from "react";
-import mapboxgl from "mapbox-gl";
-import "mapbox-gl/dist/mapbox-gl.css";
+import maplibregl from "maplibre-gl";
+import "maplibre-gl/dist/maplibre-gl.css";
 import type { CameraPreset, Flight, RenderMode, LayerVisibility } from "../types";
 import { layerVisibilityStore } from "../state/layerVisibilityStore";
 import { useOverlayParams } from "../layers/layerParamsAccess";
 import { updateStaticTrails, setStaticTrailsOpacity, setStaticTrailsVisible } from "./staticTrails";
 import { OVERLAY_REGISTRY } from "./overlayRegistry";
 import { addAllOverlays, updateAllOverlayThemes, setOverlayVisible, hydrateOverlayIfNeeded, resetOverlayHydration, isOverlayVisible } from "./overlayManager";
-import { registerPmtilesSourceTypeOnce } from "./pmtilesSourceType";
+import { layerDataStatusStore } from "../state/layerDataStatusStore";
+
+// sourceId → layer key（OVERLAY_REGISTRY 為靜態，模組級建一次）；供 source error/ready 事件標記逐層資料狀態。
+const OVERLAY_SOURCE_TO_KEY = new Map<string, keyof LayerVisibility>();
+for (const c of OVERLAY_REGISTRY) if (!OVERLAY_SOURCE_TO_KEY.has(c.sourceId)) OVERLAY_SOURCE_TO_KEY.set(c.sourceId, c.id);
+import { registerPmtilesProtocolOnce } from "./pmtilesSourceType";
+import { maplibrePmtilesSource } from "../embed/maplibreAdapters";
 import { ensureFireIsochroneLayer, updateFireIsochroneLayer } from "./fireIsochroneLayerFactory";
 import { ensureMedicalIsochroneLayers, updateMedicalIsochroneLayers } from "./medicalIsochroneLayerFactory";
 
@@ -62,7 +68,7 @@ function agriPOIParamsFrom(params: Record<string, number>) {
   };
 }
 
-function ensureAllAgricultureLayers(map: mapboxgl.Map): void {
+function ensureAllAgricultureLayers(map: maplibregl.Map): void {
   ensureAgricultureLayers(map);
   ensureAgriSoilLayers(map);
   ensureAgriSoilFertilityLayers(map);
@@ -73,7 +79,7 @@ function ensureAllAgricultureLayers(map: mapboxgl.Map): void {
 }
 
 function updateAllAgricultureLayers(
-  map: mapboxgl.Map,
+  map: maplibregl.Map,
   vis: LayerVisibility,
   params: Record<string, number>,
 ): void {
@@ -108,7 +114,7 @@ interface MapViewProps {
    * `/embed` 仍要傳：embed 的參數是 mount 時從網址凍結的，完全不進 store。
    */
   overlayParams?: Record<string, number>;
-  onMapReady?: (map: mapboxgl.Map) => void;
+  onMapReady?: (map: maplibregl.Map) => void;
 }
 
 /**
@@ -126,25 +132,13 @@ function calc2dTrailOpacity(zoom: number, isDark: boolean) {
   };
 }
 
-function setupTerrain(map: mapboxgl.Map) {
-  if (!map.getSource("mapbox-dem")) {
-    map.addSource("mapbox-dem", {
-      type: "raster-dem",
-      url: "mapbox://mapbox.mapbox-terrain-dem-v1",
-      tileSize: 512,
-      maxzoom: 14,
-    });
-  }
-  map.setTerrain({ source: "mapbox-dem", exaggeration: 1.5 });
-}
-
-/** 把 Mapbox 內建底圖（dark-v11 等）整套配色壓到「純黑」：
+/** 把 OpenFreeMap Liberty 底圖整套配色壓到「純黑」：
  *  - background / fill / fill-extrusion → 黑或近黑
  *  - line（道路、行政邊界）→ 極暗灰，只剩骨架
  *  - symbol（地名）→ 暗灰 + 黑色 halo
  *  注：只動 Mapbox 原生底圖層；自家 overlay（id 含 "-overlay" 等）不受影響。
  */
-function applyPureBlackTheme(map: mapboxgl.Map): void {
+function applyPureBlackTheme(map: maplibregl.Map): void {
   const style = map.getStyle();
   if (!style?.layers) return;
   for (const layer of style.layers) {
@@ -184,7 +178,7 @@ export function MapView({ preset, styleUrl, pureBlack = false, flights, renderMo
   const overlayParams = overlayParamsProp ?? storeOverlayParams;
 
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
   const readyRef = useRef(false);
 
   const onMapReadyRef = useRef(onMapReady);
@@ -208,26 +202,37 @@ export function MapView({ preset, styleUrl, pureBlack = false, flights, renderMo
   useEffect(() => {
     if (!containerRef.current) return;
 
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
+    // MapLibre 不需要 token。PMTiles protocol 必須在任何 source 建立前註冊。
+    registerPmtilesProtocolOnce();
 
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container: containerRef.current,
       style: styleUrl,
       center: presetRef.current.center,
       zoom: presetRef.current.zoom,
       pitch: presetRef.current.pitch,
       bearing: presetRef.current.bearing,
-      antialias: true,
+    });
+
+    // 逐層資料狀態：source 載入失敗（多為缺資產 404 / PMTiles magic number）→ 標 error；
+    // 成功載入該 source → loading 轉 ready。供側欄徽章對「開了卻空白」的層說清楚原因。
+    map.on("error", (e: unknown) => {
+      const sid = (e as { sourceId?: string })?.sourceId;
+      if (!sid) return;
+      const key = OVERLAY_SOURCE_TO_KEY.get(sid);
+      if (key) layerDataStatusStore.set(key, "error");
+    });
+    map.on("sourcedata", (e: unknown) => {
+      const evt = e as { sourceId?: string; isSourceLoaded?: boolean };
+      if (!evt.sourceId || !evt.isSourceLoaded) return;
+      const key = OVERLAY_SOURCE_TO_KEY.get(evt.sourceId);
+      if (key && layerDataStatusStore.get(key) === "loading") layerDataStatusStore.set(key, "ready");
     });
 
     // 唯一的 style.load handler：每次底圖切換都會觸發，重建所有圖層
     map.on("style.load", () => {
-      // Pure Black 配色：在加 overlay 前先壓 Mapbox 原生底圖層
+      // Pure Black 配色：在加 overlay 前先壓 Liberty 原生底圖層
       if (pureBlackRef.current) applyPureBlackTheme(map);
-      setupTerrain(map);
-
-      // PMTiles SourceType 須在任何 pmtiles source addSource 前註冊（水利層走 overlayRegistry）
-      registerPmtilesSourceTypeOnce();
 
       // 底圖切換 → 所有 overlay source 被 Mapbox 重建為空 FC。先清 hydrate 記錄，
       // 否則 hydratedSources 殘留會讓下方 re-hydrate 被跳過 → 靜態 GeoJSON 圖層切底圖後變空白。
@@ -244,6 +249,7 @@ export function MapView({ preset, styleUrl, pureBlack = false, flights, renderMo
         isDarkThemeRef.current,
         vis,
         overlayParamsRef.current,
+        { pmtilesSource: maplibrePmtilesSource },
       );
 
       // 重建後：把目前可見的靜態 GeoJSON 圖層重新 fetch + setData（切底圖不再消失）
@@ -271,13 +277,12 @@ export function MapView({ preset, styleUrl, pureBlack = false, flights, renderMo
       ensurePopCountLayers(map);
       ensureIndicatorsLayers(map);
       ensureYoubikeLayers(map);
-      ensureAllAgricultureLayers(map);
+      // 精簡版：範圍外 PMTiles 層 lazy — 僅在該層可見時才 ensure（避免缺資產 404 讓地圖不 idle）
+      if (vis.agriculture || vis.agriSoil || vis.agriSoilFertility || vis.agriCropSuitability || vis.agriLeisureFarmZones || vis.agriRuralRegen || vis.agriPOI) ensureAllAgricultureLayers(map);
       updateAllAgricultureLayers(map, vis, overlayParamsRef.current);
-      // 等時圈 PMTiles 層（須排在 agriculture 之後 → 共用 PMTiles SourceType 已註冊）
-      ensureFireIsochroneLayer(map);
+      if (vis.fireIsochrone) ensureFireIsochroneLayer(map);
       updateFireIsochroneLayer(map, vis.fireIsochrone, fireIsochroneParamsOf(overlayParamsRef.current));
-      // 醫療等時圈 + 醫療沙漠（PMTiles fill，共用 SourceType）
-      ensureMedicalIsochroneLayers(map);
+      if (vis.medIsochrone || vis.medDesert) ensureMedicalIsochroneLayers(map);
       updateMedicalIsochroneLayers(map, vis, overlayParamsRef.current);
 
       // 初次載入後，每次樣式切換都重建 flight layer
@@ -292,7 +297,7 @@ export function MapView({ preset, styleUrl, pureBlack = false, flights, renderMo
       // debug handle：dev 一律暴露；production 帶 ?debug 才暴露
       // （給 E2E / 線上排障直接操作相機、查 source/layer 狀態用）
       if (import.meta.env.DEV || window.location.search.includes("debug")) {
-        (window as unknown as { __map?: mapboxgl.Map }).__map = map;
+        (window as unknown as { __map?: maplibregl.Map }).__map = map;
         // 週巡檢 A6 用：這個版本的 registry 宣告了哪些 sourceId。
         // 巡檢腳本拿它跟 `map.getStyle().sources` 對帳，就能精確指出
         // 「哪幾個 overlay 的 source 在執行期沒建起來」。
@@ -311,13 +316,14 @@ export function MapView({ preset, styleUrl, pureBlack = false, flights, renderMo
       ensurePopCountLayers(map);
       ensureIndicatorsLayers(map);
       ensureYoubikeLayers(map);
-      ensureAllAgricultureLayers(map);
       // AR-21：同 style.load —— visibility 讀 store 的最新值
       const vis = layerVisibilityStore.getAll();
+      // 精簡版：範圍外 PMTiles 層 lazy — 僅在該層可見時才 ensure
+      if (vis.agriculture || vis.agriSoil || vis.agriSoilFertility || vis.agriCropSuitability || vis.agriLeisureFarmZones || vis.agriRuralRegen || vis.agriPOI) ensureAllAgricultureLayers(map);
       updateAllAgricultureLayers(map, vis, overlayParamsRef.current);
-      ensureFireIsochroneLayer(map);
+      if (vis.fireIsochrone) ensureFireIsochroneLayer(map);
       updateFireIsochroneLayer(map, vis.fireIsochrone, fireIsochroneParamsOf(overlayParamsRef.current));
-      ensureMedicalIsochroneLayers(map);
+      if (vis.medIsochrone || vis.medDesert) ensureMedicalIsochroneLayers(map);
       updateMedicalIsochroneLayers(map, vis, overlayParamsRef.current);
       // 補發 load 之前用戶已切的 toggle / slider：
       // mapRef 在 load 才設定，而 production 首載 load 事件可能晚達 ~30s，
@@ -325,8 +331,9 @@ export function MapView({ preset, styleUrl, pureBlack = false, flights, renderMo
       // 這裡用 store 的最新值重放一次，避免「toggle 開了但圖層沒出現」。
       for (const config of OVERLAY_REGISTRY) {
         const v = isOverlayVisible(config, vis, overlayParamsRef.current);
+        // 先 setOverlayVisible（lazy 建立 source/layer），再 hydrate
+        setOverlayVisible(map, config, v, isDarkThemeRef.current, overlayParamsRef.current, { pmtilesSource: maplibrePmtilesSource });
         if (v) void hydrateOverlayIfNeeded(map, config);
-        setOverlayVisible(map, config, v, isDarkThemeRef.current, overlayParamsRef.current);
       }
       updateAllOverlayThemes(map, OVERLAY_REGISTRY, isDarkThemeRef.current, overlayParamsRef.current, vis);
       onMapReadyRef.current?.(map);
@@ -447,8 +454,15 @@ export function MapView({ preset, styleUrl, pureBlack = false, flights, renderMo
       setStaticTrailsVisible(map, showTrailsRef.current && vis.flights);
       for (const config of OVERLAY_REGISTRY) {
         const v = isOverlayVisible(config, vis, overlayParamsRef.current);
+        // 逐層資料狀態：首次開啟且尚無狀態 → loading（之後由 source error/ready 事件覆蓋）；關閉 → 清除。
+        if (v) {
+          if (layerDataStatusStore.get(config.id) === undefined) layerDataStatusStore.set(config.id, "loading");
+        } else {
+          layerDataStatusStore.clear(config.id);
+        }
+        // 先 setOverlayVisible（lazy 會在此建立 source/layer），再 hydrate（需 source 已存在）
+        setOverlayVisible(map, config, v, isDarkThemeRef.current, overlayParamsRef.current, { pmtilesSource: maplibrePmtilesSource });
         if (v) void hydrateOverlayIfNeeded(map, config);
-        setOverlayVisible(map, config, v, isDarkThemeRef.current, overlayParamsRef.current);
       }
       // OVERLAY_REGISTRY 之外的專屬圖層
       updateAllAgricultureLayers(map, vis, overlayParamsRef.current);

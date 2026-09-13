@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "react";
-import type { CircleLayer, ExpressionSpecification, Map as MapboxMap } from "mapbox-gl";
+import type { CircleLayerSpecification, ExpressionSpecification, Map as MapboxMap } from "maplibre-gl";
 import {
   fetchJpReligionOsm,
   fetchJpReligionWikidata,
 } from "../data/jpReligionLoader";
 import { JP_RELIGION_COLOR_EXPRESSION } from "../data/jpReligionTypes";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { useMapReadyTick } from "./useMapReadyTick";
 
 const GSI_SOURCE_ID = "jp-religion-gsi";
@@ -51,7 +51,7 @@ function circleLayer(
   sourceLayer?: string,
   strokeColor: string | ExpressionSpecification = "rgba(15, 23, 42, 0.45)",
   strokeWidth: number | ExpressionSpecification = 0.35,
-): CircleLayer {
+): CircleLayerSpecification {
   return {
     id,
     type: "circle",
@@ -65,12 +65,12 @@ function circleLayer(
       "circle-stroke-color": strokeColor,
       "circle-stroke-width": strokeWidth,
     },
-  } as CircleLayer;
+  } as CircleLayerSpecification;
 }
 
 function gsiAbsoluteUrl(): string {
   const relative = `${import.meta.env.BASE_URL ?? "/"}world/jp_religion_gsi.pmtiles`;
-  return new URL(relative, window.location.href).href;
+  return pmtilesUrl(relative);
 }
 
 function useGsiLayer(

@@ -71,19 +71,19 @@ describe("parseUrlState — 相機", () => {
 
 describe("parseUrlState — 圖層安全過濾", () => {
   it("保留合法圖層", () => {
-    const s = parseUrlState(`?${V}&layers=aquaculturePonds,aquacultureZone`);
-    expect(s.layers).toEqual(["aquaculturePonds", "aquacultureZone"]);
+    const s = parseUrlState(`?${V}&layers=countyBoundary,contour25k`);
+    expect(s.layers).toEqual(["countyBoundary", "contour25k"]);
   });
 
   it("未知 key 靜默 drop、不影響其他層", () => {
-    const s = parseUrlState(`?${V}&layers=aquaculturePonds,notARealLayerKey`);
-    expect(s.layers).toEqual(["aquaculturePonds"]);
+    const s = parseUrlState(`?${V}&layers=countyBoundary,notARealLayerKey`);
+    expect(s.layers).toEqual(["countyBoundary"]);
   });
 
   it("🔒 gated 圖層一律 drop（owner-only 資料不得經由網址洩漏）", () => {
     const gated = [...GATED_LAYERS][0]!;
-    const s = parseUrlState(`?${V}&layers=${gated},aquaculturePonds`);
-    expect(s.layers).toEqual(["aquaculturePonds"]);
+    const s = parseUrlState(`?${V}&layers=${gated},countyBoundary`);
+    expect(s.layers).toEqual(["countyBoundary"]);
   });
 
   it("🔒 每一個 gated key 逐一驗證都被擋（數量隨 GATED_LAYERS 自動增減）", () => {
@@ -94,15 +94,15 @@ describe("parseUrlState — 圖層安全過濾", () => {
   });
 
   it("allowedLayers 白名單再收一層（/embed 用）", () => {
-    const s = parseUrlState(`?${V}&layers=aquaculturePonds,aquacultureZone`, {
-      allowedLayers: new Set(["aquaculturePonds"]),
+    const s = parseUrlState(`?${V}&layers=countyBoundary,contour25k`, {
+      allowedLayers: new Set(["countyBoundary"]),
     });
-    expect(s.layers).toEqual(["aquaculturePonds"]);
+    expect(s.layers).toEqual(["countyBoundary"]);
   });
 
   it("重複 key 去重", () => {
-    const s = parseUrlState(`?${V}&layers=aquaculturePonds,aquaculturePonds`);
-    expect(s.layers).toEqual(["aquaculturePonds"]);
+    const s = parseUrlState(`?${V}&layers=countyBoundary,countyBoundary`);
+    expect(s.layers).toEqual(["countyBoundary"]);
   });
 
   it("全部被濾掉時回 undefined 而非空陣列", () => {
@@ -110,8 +110,8 @@ describe("parseUrlState — 圖層安全過濾", () => {
   });
 
   it("測試用的 key 確實存在於 catalog（避免測試自身腐爛）", () => {
-    expect(Object.keys(LAYER_COLORS)).toContain("aquaculturePonds");
-    expect(Object.keys(LAYER_COLORS)).toContain("aquacultureZone");
+    expect(Object.keys(LAYER_COLORS)).toContain("countyBoundary");
+    expect(Object.keys(LAYER_COLORS)).toContain("contour25k");
   });
 });
 
@@ -339,7 +339,7 @@ describe("buildUrl", () => {
   it("round-trip：parse(build(x)) === x", () => {
     const original = {
       camera: { center: [120.13, 23.09] as [number, number], zoom: 11.2, pitch: 45, bearing: -20 },
-      layers: ["aquaculturePonds", "aquacultureZone"] as (keyof LayerVisibility)[],
+      layers: ["countyBoundary", "contour25k"] as (keyof LayerVisibility)[],
       params: { aquaculturePondsOpacity: 0.85 },
       date: "2026-07-15",
       hour: 14,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import {
   startTimelineSliceController,
   type TimelineSliceLayerConfig,

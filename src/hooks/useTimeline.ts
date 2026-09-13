@@ -172,7 +172,7 @@ export function advanceReplayFrame(
 export function useTimeline({
   dataStartTime,
   dataEndTime: _dataEndTime,
-  timeMode: initialTimeMode = "replay",
+  timeMode: initialTimeMode = "live",
 }: UseTimelineOptions): UseTimelineReturn {
   void _dataEndTime; // 保留 interface 相容，實際用 dataStartTime 初始化
   // 預設選定日期 = 台灣時間的今天（不依賴資料範圍，避免不同資料源日期不一致）
@@ -225,10 +225,13 @@ export function useTimeline({
   const duration = windowEnd - windowStart;
   const progress = duration > 0 ? (currentTime - windowStart) / duration : 0;
 
-  // 日期切換時重置 currentTime
+  // 日期切換時重置 currentTime。夾住 ≤ 今天：絕不讓時間軸落到未來（未來無資料＝整片空）。
   const setSelectedDate = useCallback((d: Date) => {
-    setSelectedDateRaw(d);
-    timeStore.setTime(dayStartUnix(d));
+    const todayStr = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Taipei" });
+    const today = new Date(todayStr + "T00:00:00+08:00");
+    const clamped = d.getTime() > today.getTime() ? today : d;
+    setSelectedDateRaw(clamped);
+    timeStore.setTime(dayStartUnix(clamped));
     setPlaying(false);
   }, []);
 

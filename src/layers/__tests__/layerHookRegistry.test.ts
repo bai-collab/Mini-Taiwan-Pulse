@@ -177,7 +177,8 @@ const NO_HOOK_LEDGER = new Set<string>([
   "provincialRoads", "religionTemples", "streetTreesNational", "streetTreesTaipei3epoch",
   "streetTreesTaipeiDiff", "townshipBoundary", "treePitsTaipei", "urbanFormGrid", "urbanHeat",
   "urbanZoningNewTaipei", "urbanZoningTaipei", "villageBoundary", "waterCanals",
-  "waterFloodExtreme", "waterLevees", "waterRivers",
+  "waterFloodExtreme", "waterLevees",
+  // waterRivers 已移除：新增 useRiverFlowLayer(RiverFlowHost) 河川水流動畫 hook（keys:["waterRivers"]）。
   // 🔊 噪音／聲響：NoiseCapture 三尺度共用一個 toggle/source；裁處重用既有 PMTiles。
   "noiseCaptureGrid", "noiseControlZones", "noiseEnforcementEvents",
 

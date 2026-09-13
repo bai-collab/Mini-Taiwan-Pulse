@@ -1,10 +1,11 @@
-import mapboxgl from "mapbox-gl";
+import maplibregl from "maplibre-gl";
 import type {
   Map as MapboxMap,
-  CircleLayer,
+  GeoJSONSource,
+  CircleLayerSpecification,
   ExpressionSpecification,
   FillLayerSpecification,
-} from "mapbox-gl";
+} from "maplibre-gl";
 import {
   CWA_INTENSITY_BANDS,
   SHAKEMAP_CELL_DEG,
@@ -13,18 +14,18 @@ import {
   type EarthquakeReplayEvent,
 } from "../data/earthquakeReplayTypes";
 import { beachballSvg, type FocalMechanism } from "../lib/beachball";
-import { registerPmtilesSourceTypeOnce } from "./pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "./pmtilesSourceType";
 import { PMTILES_SOURCE_TYPE } from "./pmtilesConstants";
 
 /**
- * 地震回放（earthquakeReplay）— Mapbox source / layer 組裝。
+ * 地震回放（earthquakeReplay）— MapLibre source / layer 組裝。
  *
  * 五個視覺元件，全部是「回放時鐘的純函數」（見 useEarthquakeReplayLayer）：
  *   1. 震央核心 + S 波前圈（單一 feature，直接寫 paint 數值，不用表達式）
  *   2. 測站 circle（GeoJSON，feature id = index，feature-state `lit` / `flash`）
  *   3. 等震度網格 fill（GeoJSON polygon，幾何**只建一次**，feature-state `on` 控淡入）
  *   4. 鄉鎮面量圖 fill（PMTiles 幾何 + promoteId TOWNCODE，feature-state `eqi`）
- *   5. 沙灘球 Marker（beachball.ts 純 SVG，走 mapboxgl.Marker 不進 style）
+ *   5. 沙灘球 Marker（beachball.ts 純 SVG，走 MapLibre Marker 不進 style）
  *
  * ⚠️ 鄉鎮走**自建 source**（不進 overlayManager / overlayRegistry 的通用路徑）——
  * 比照 useRoadCongestionLayer：通用路徑不支援 promoteId + feature-state 染色。
@@ -196,7 +197,7 @@ export function ensureEarthquakeReplayLayers(map: MapboxMap, opacity: number): b
   if (!map.getSource(EQ_REPLAY_TOWN_SOURCE)) {
     map.addSource(EQ_REPLAY_TOWN_SOURCE, {
       type: PMTILES_SOURCE_TYPE,
-      url: EQ_REPLAY_TOWN_URL,
+      url: pmtilesUrl(EQ_REPLAY_TOWN_URL),
       minzoom: 6,
       maxzoom: 13,
       // feature-state 染色鍵：feature id = TOWNCODE（8 碼；CWA 7 碼轉換見 types 檔）
@@ -257,7 +258,7 @@ export function ensureEarthquakeReplayLayers(map: MapboxMap, opacity: number): b
           "circle-stroke-width": 1,
           "circle-stroke-opacity": stationOpacityExpr(opacity * 0.55),
         },
-      } as CircleLayer,
+      } as CircleLayerSpecification,
       before,
     );
   }
@@ -275,7 +276,7 @@ export function ensureEarthquakeReplayLayers(map: MapboxMap, opacity: number): b
           "circle-stroke-width": 2,
           "circle-stroke-opacity": 0,
         },
-      } as CircleLayer,
+      } as CircleLayerSpecification,
       before,
     );
   }
@@ -294,7 +295,7 @@ export function ensureEarthquakeReplayLayers(map: MapboxMap, opacity: number): b
           "circle-stroke-width": 1.5,
           "circle-stroke-opacity": 0,
         },
-      } as CircleLayer,
+      } as CircleLayerSpecification,
       before,
     );
   }
@@ -319,7 +320,7 @@ export function setEarthquakeReplayVisible(map: MapboxMap, visible: boolean): vo
 }
 
 function setGeoJSON(map: MapboxMap, sourceId: string, data: GeoJSON.FeatureCollection): void {
-  const src = map.getSource(sourceId);
+  const src = map.getSource(sourceId) as GeoJSONSource | undefined;
   if (!src || src.type !== "geojson") return;
   src.setData(data);
 }
@@ -396,7 +397,7 @@ export function metersToPixels(meters: number, lat: number, zoom: number): numbe
 // ── 沙灘球 Marker ───────────────────────────────────────────────────
 
 export interface BeachballHandle {
-  marker: mapboxgl.Marker;
+  marker: maplibregl.Marker;
   /** 內層才是動畫對象：Marker 會自己覆寫外層 element 的 transform（定位用） */
   inner: HTMLDivElement;
 }
@@ -428,7 +429,7 @@ export function createBeachballMarker(
   });
   element.appendChild(inner);
 
-  const marker = new mapboxgl.Marker({ element, anchor: "center" })
+  const marker = new maplibregl.Marker({ element, anchor: "center" })
     .setLngLat(lngLat)
     .addTo(map);
   return { marker, inner };

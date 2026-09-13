@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
+import type { GeoJSONSource, Map as MapboxMap } from "maplibre-gl";
 import { fetchAnimalAdoptionSummary, type AnimalAdoptionShelterRow } from "../data/animalAdoptionLoader";
 import { useMapReadyTick } from "./useMapReadyTick";
 import { keepLoadingUntilMapIdle } from "../lib/loadingRegistry";

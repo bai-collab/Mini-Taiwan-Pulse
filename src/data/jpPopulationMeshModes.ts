@@ -1,4 +1,4 @@
-import type { ExpressionSpecification } from "mapbox-gl";
+import type { ExpressionSpecification } from "maplibre-gl";
 
 // ══════════════════════════════════════════════════════════════════
 //  日本 1km 人口網格（jp_population_mesh_1km）的模式 ＋ 色階 SSOT

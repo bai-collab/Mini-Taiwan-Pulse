@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { createRealEstatePointsLayer, RE_POINTS_LAYER_ID } from "../map/realEstatePointsCustomLayer";
 import { rePointsStore } from "../state/realEstatePointsStore";
 import { useMapReadyTick } from "./useMapReadyTick";

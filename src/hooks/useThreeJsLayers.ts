@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import type { Flight, Ship, RailTrain, BusVehicle, RenderMode, RailData, LayerVisibility } from "../types";
 import type { FlightScene } from "../three/FlightScene";
 import type { ShipScene } from "../three/ShipScene";
@@ -30,6 +30,7 @@ import { createTemperatureWaveLayer } from "../map/temperatureWaveCustomLayer";
 import type { TemperatureGridData } from "../data/temperatureLoader";
 import { createFireStationLayer } from "../map/fireStationCustomLayer";
 import type { FireStationScene } from "../three/FireStationScene";
+import { BUS_VISUAL_TOKENS } from "../data/busVisualTokens";
 
 interface UseThreeJsLayersArgs {
   timeRef: React.RefObject<number>;
@@ -165,6 +166,8 @@ export function useThreeJsLayers({
       getColorMode: () => paramRefs.busColorMode.current as import("../types").BusColorMode,
       getAltOffset: () => paramRefs.busAltOffset.current,
       getOpacityMultiplier: () => paramRefs.busOpacity.current,
+      getAccentColor: () => BUS_VISUAL_TOKENS.city.accent,
+      getOutlineColor: () => isDarkThemeRef.current ? BUS_VISUAL_TOKENS.city.outlineDark : BUS_VISUAL_TOKENS.city.outlineLight,
       onSceneReady: (scene) => { busSceneRef.current = scene; },
     });
     map.addLayer(layer);
@@ -181,6 +184,8 @@ export function useThreeJsLayers({
       getColorMode: () => paramRefs.busIntercityColorMode.current as import("../types").BusColorMode,
       getAltOffset: () => paramRefs.busIntercityAltOffset.current,
       getOpacityMultiplier: () => paramRefs.busIntercityOpacity.current,
+      getAccentColor: () => BUS_VISUAL_TOKENS.intercity.accent,
+      getOutlineColor: () => isDarkThemeRef.current ? BUS_VISUAL_TOKENS.intercity.outlineDark : BUS_VISUAL_TOKENS.intercity.outlineLight,
       onSceneReady: (scene) => { busIntercitySceneRef.current = scene; },
     });
     map.addLayer(layer);
@@ -197,6 +202,8 @@ export function useThreeJsLayers({
       getColorMode: () => paramRefs.touristShuttleColorMode.current as import("../types").BusColorMode,
       getAltOffset: () => paramRefs.touristShuttleAltOffset.current,
       getOpacity: () => paramRefs.touristShuttleOpacity.current,
+      getAccentColor: () => BUS_VISUAL_TOKENS.tourist.accent,
+      getOutlineColor: () => isDarkThemeRef.current ? BUS_VISUAL_TOKENS.tourist.outlineDark : BUS_VISUAL_TOKENS.tourist.outlineLight,
       onSceneReady: (scene) => { touristShuttleSceneRef.current = scene; },
     });
     map.addLayer(layer);

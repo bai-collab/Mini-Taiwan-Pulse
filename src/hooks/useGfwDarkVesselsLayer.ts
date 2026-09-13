@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { CircleLayer, GeoJSONSource, Map as MapboxMap } from "mapbox-gl";
+import type { CircleLayerSpecification, GeoJSONSource, Map as MapboxMap } from "maplibre-gl";
 import { floorUtcHourIso } from "../data/gfwHourlyGridLoader";
 import {
   loadGfwDarkVesselsHour,
@@ -43,7 +43,7 @@ function ensureLayer(map: MapboxMap): void {
         "circle-stroke-width": 1.2,
         "circle-stroke-opacity": 0.95,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 }
 

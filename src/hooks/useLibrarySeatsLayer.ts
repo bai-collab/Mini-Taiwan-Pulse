@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import type { Map as MapboxMap, GeoJSONSource } from "mapbox-gl";
+import type { Map as MapboxMap, GeoJSONSource } from "maplibre-gl";
 import { fetchLibrarySeatsFC, invalidateLibrarySeatsCurrent } from "../data/librarySeatsLoader";
 import { useMapReadyTick } from "./useMapReadyTick";
 

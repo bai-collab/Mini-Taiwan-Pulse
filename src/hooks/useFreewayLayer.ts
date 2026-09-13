@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import type { Map as MapboxMap, LineLayer, FilterSpecification } from "mapbox-gl";
+import type { Map as MapboxMap, LineLayerSpecification, FilterSpecification, GeoJSONSource, ExpressionSpecification } from "maplibre-gl";
 import {
   fetchFreewayDay,
   buildFreewayGeoJSON,
@@ -53,7 +53,7 @@ function buildLayers(map: MapboxMap, width: number, isDark: boolean, opacity: nu
         "line-opacity": (isDark ? 0.08 : 0.12) * opacity,
       },
       filter: ["!=", ["get", "level"], 0] as unknown as FilterSpecification,
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
 
   if (!map.getLayer(LAYER_LINE)) {
@@ -75,7 +75,7 @@ function buildLayers(map: MapboxMap, width: number, isDark: boolean, opacity: nu
         ],
         "line-opacity": (isDark ? 0.75 : 0.65) * opacity,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
 
   // 命中層最後加 → 疊在可視線之上，queryRenderedFeatures 才查得到
@@ -89,7 +89,7 @@ function buildLayers(map: MapboxMap, width: number, isDark: boolean, opacity: nu
         "line-width": 12,
         "line-opacity": 0,
       },
-    } as LineLayer);
+    } as LineLayerSpecification);
   }
   return true;
 }
@@ -153,7 +153,7 @@ export function useFreewayLayer(
    * 載入新日資料後的 **首次** refresh 才延續 loading（見 loadDay 的成功 callback）。
    */
   const refreshSource = useCallback((map: MapboxMap, t: number) => {
-    const src = map.getSource(SOURCE_ID) as mapboxgl.GeoJSONSource | undefined;
+    const src = map.getSource(SOURCE_ID) as GeoJSONSource | undefined;
     if (!src) return;
     const fc = buildFreewayGeoJSON(activeDayRef.current, t);
     src.setData(fc);
@@ -276,7 +276,7 @@ export function useFreewayLayer(
         10, 1.5 * width,
         13, 3 * width,
         16, 5 * width,
-      ] as unknown as mapboxgl.ExpressionSpecification);
+      ] as unknown as ExpressionSpecification);
       map.setPaintProperty(LAYER_LINE, "line-opacity", (isDark ? 0.75 : 0.65) * opacity);
     }
   }, [width, isDark, opacity, mapRef, mapTick]);

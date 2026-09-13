@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import type { ExpressionSpecification, FillLayer, LineLayer, Map as MapboxMap } from "mapbox-gl";
+import type { ExpressionSpecification, FillLayerSpecification, LineLayerSpecification, Map as MapboxMap } from "maplibre-gl";
 import { fetchAnimalShelterPressureLatest, type AnimalShelterPressureRow } from "../data/animalShelterOutcomesLoader";
-import { registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
+import { pmtilesUrl, registerPmtilesSourceTypeOnce } from "../map/pmtilesSourceType";
 import { PMTILES_SOURCE_TYPE } from "../map/pmtilesConstants";
 import { useMapReadyTick } from "./useMapReadyTick";
 
@@ -99,7 +99,7 @@ export function useAnimalShelterPressureLayer(
     registerPmtilesSourceTypeOnce();
     if (!map.getSource(SOURCE_ID)) {
       map.addSource(SOURCE_ID, {
-        type: PMTILES_SOURCE_TYPE, url: SOURCE_URL, minzoom: 0, maxzoom: 14,
+        type: PMTILES_SOURCE_TYPE, url: pmtilesUrl(SOURCE_URL), minzoom: 0, maxzoom: 14,
         promoteId: { [SOURCE_LAYER]: "行政區域代碼" },
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any);
@@ -109,13 +109,13 @@ export function useAnimalShelterPressureLayer(
       map.addLayer({
         id: FILL_LAYER, type: "fill", source: SOURCE_ID, "source-layer": SOURCE_LAYER, minzoom: 4,
         paint: { "fill-color": UTILIZATION_COLOR, "fill-opacity": opacity, "fill-outline-color": "rgba(0,0,0,0)" },
-      } as unknown as FillLayer, before);
+      } as unknown as FillLayerSpecification, before);
     } else map.setPaintProperty(FILL_LAYER, "fill-opacity", opacity);
     if (!map.getLayer(LINE_LAYER)) {
       map.addLayer({
         id: LINE_LAYER, type: "line", source: SOURCE_ID, "source-layer": SOURCE_LAYER, minzoom: 4,
         paint: { "line-color": "#9a3412", "line-width": ["interpolate", ["linear"], ["zoom"], 4, 0.5, 10, 1.2], "line-opacity": opacity * 0.7 },
-      } as unknown as LineLayer, before);
+      } as unknown as LineLayerSpecification, before);
     } else map.setPaintProperty(LINE_LAYER, "line-opacity", opacity * 0.7);
     setVisible(map, true);
 

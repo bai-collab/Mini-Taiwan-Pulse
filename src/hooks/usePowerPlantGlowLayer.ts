@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { useMapReadyTick } from "./useMapReadyTick";
 import {
   createPowerPlantGlowLayer,

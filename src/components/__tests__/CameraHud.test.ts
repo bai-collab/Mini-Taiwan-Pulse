@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { createCameraHudStore, formatCameraInfo, readCameraInfo } from "../CameraHud";
 
 function fakeMap(values = { lng: 121.50006, lat: 25.01234, zoom: 9.64, pitch: 42.6, bearing: -12.4 }) {

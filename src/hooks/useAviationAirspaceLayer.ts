@@ -1,8 +1,6 @@
 import { useEffect } from "react";
-import mapboxgl from "mapbox-gl";
-import type { Map as MapboxMap, FilterSpecification } from "mapbox-gl";
-// @ts-expect-error 套件未提供 ESM build 的型別宣告
-import { PmTilesSource } from "mapbox-pmtiles/dist/mapbox-pmtiles.js";
+import type { Map as MapboxMap, FilterSpecification, ExpressionSpecification } from "maplibre-gl";
+import { pmtilesUrl, registerPmtilesProtocolOnce } from "../map/pmtilesSourceType";
 import { useMapReadyTick } from "./useMapReadyTick";
 
 /**
@@ -22,20 +20,9 @@ import { useMapReadyTick } from "./useMapReadyTick";
  *        ceiling_raw / airspace_class / layer_index / source / remarks
  */
 
-const SOURCE_TYPE = (PmTilesSource as unknown as { SOURCE_TYPE: string }).SOURCE_TYPE;
-
-let sourceTypeRegistered = false;
+const SOURCE_TYPE = "vector";
 function registerSourceTypeOnce() {
-  if (sourceTypeRegistered) return;
-  sourceTypeRegistered = true;
-  try {
-    const Style = (mapboxgl as unknown as {
-      Style: { setSourceType: (t: string, impl: unknown) => void };
-    }).Style;
-    Style.setSourceType(SOURCE_TYPE, PmTilesSource);
-  } catch {
-    // 已註冊
-  }
+  registerPmtilesProtocolOnce();
 }
 
 const BASE = `${import.meta.env.BASE_URL ?? "/"}coverage`;
@@ -58,7 +45,7 @@ const RESTRICTED_LAYERS: FilterSpecification = [
     ["CTR", "CONTROL", "SURFACE", "RCR", "DANGER", "ULZ", "CIRCUIT"]],
 ] as unknown as FilterSpecification;
 
-const COLOR_EXPR: mapboxgl.ExpressionSpecification = [
+const COLOR_EXPR: ExpressionSpecification = [
   "match", ["get", "layer"],
   "FIR", "#6495ED",
   "TMA", "#4682B4",
@@ -70,23 +57,23 @@ const COLOR_EXPR: mapboxgl.ExpressionSpecification = [
   "ULZ", "#FFC107",
   "CIRCUIT", "#4CAF50",
   "#94a3b8",
-] as unknown as mapboxgl.ExpressionSpecification;
+] as unknown as ExpressionSpecification;
 
 // 禁限航 fill 各類基礎不透明度
-const RESTRICTED_OPACITY_FACTOR: mapboxgl.ExpressionSpecification = [
+const RESTRICTED_OPACITY_FACTOR: ExpressionSpecification = [
   "match", ["get", "layer"],
   "CTR", 0.45, "CONTROL", 0.45, "SURFACE", 0.45,
   "RCR", 0.50, "DANGER", 0.55,
   "ULZ", 0.42, "CIRCUIT", 0.35,
   0.35,
-] as unknown as mapboxgl.ExpressionSpecification;
+] as unknown as ExpressionSpecification;
 
 function setVis(map: MapboxMap, id: string, on: boolean) {
   if (map.getLayer(id)) map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
 }
 
 function safeIsStyleLoaded(map: MapboxMap): boolean {
-  try { return map.isStyleLoaded(); } catch { return false; }
+  try { return map.isStyleLoaded() === true; } catch { return false; }
 }
 
 export function useAviationAirspaceLayer(
@@ -120,7 +107,7 @@ export function useAviationAirspaceLayer(
       if (!map.getSource(SOURCE_ID)) {
         map.addSource(SOURCE_ID, {
           type: SOURCE_TYPE,
-          url: `${BASE}/aviation_airspace.pmtiles`,
+          url: pmtilesUrl(`${BASE}/aviation_airspace.pmtiles`),
           minzoom: 4,
           maxzoom: 12,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -167,9 +154,9 @@ export function useAviationAirspaceLayer(
       }
 
       // ── Restricted 群：CTR/CONTROL/SURFACE/RCR/DANGER/ULZ/CIRCUIT ──
-      const restrictedFillOpacity: mapboxgl.ExpressionSpecification = [
+      const restrictedFillOpacity: ExpressionSpecification = [
         "*", RESTRICTED_OPACITY_FACTOR, restrictedOpacity,
-      ] as unknown as mapboxgl.ExpressionSpecification;
+      ] as unknown as ExpressionSpecification;
       const restrictedLineOpacity = Math.min(1, restrictedOpacity * 0.9 + 0.2);
       if (!map.getLayer(RESTRICTED_FILL)) {
         map.addLayer({

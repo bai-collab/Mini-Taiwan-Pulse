@@ -1,4 +1,4 @@
-import type { ExpressionSpecification } from "mapbox-gl";
+import type { ExpressionSpecification } from "maplibre-gl";
 
 // ── 学校分類（school_class，13 類，scalar 屬性，非陣列）──
 // 排列＝學制階梯（幼兒 → 初等 → 中等 → 高等 → 特殊/その他），同階梯用相近色階，

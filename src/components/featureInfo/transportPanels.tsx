@@ -36,6 +36,7 @@ export function WeatherStationPanel({ props }: { props: Record<string, unknown> 
   const stationType = String(props.station_type ?? "");
   const accentColor = WEATHER_TYPE_COLORS[stationType] ?? "#4dd0e1";
   const isActive = props.is_active;
+  const location = String(props.address || props.city || "");
   const activeLabel = isActive === true || isActive === 1 || isActive === "true" ? "運作中" : isActive === false || isActive === 0 || isActive === "false" ? "已停用" : "";
 
   return (
@@ -47,12 +48,8 @@ export function WeatherStationPanel({ props }: { props: Record<string, unknown> 
         </div>
       </div>
       <Row label="類型" value={stationType} color={accentColor} />
-      <Row label="海拔" value={props.elevation_m != null ? `${props.elevation_m} m` : ""} />
-      <Row label="城市" value={String(props.city ?? "")} />
-      <Row label="地址" value={String(props.address ?? "")} />
-      <Row label="啟用日" value={String(props.start_date ?? "")} />
+      <Row label="位置" value={location} />
       <Row label="狀態" value={activeLabel} color={activeLabel === "運作中" ? "#66bb6a" : "#ef5350"} />
-      <Row label="備註" value={String(props.note ?? "")} />
     </>
   );
 }
@@ -92,6 +89,7 @@ export function BusStationPanel({ props }: { props: Record<string, unknown> }) {
           {String(props.StationName ?? "Unknown Station")}
         </div>
       </div>
+      <Row label="服務" value={isIntercity ? "公路客運(全國路線)" : "嘉義市/縣公車"} color={accentColor} />
       <Row label="類型" value={isIntercity ? "客運" : "市區公車"} color={accentColor} />
       <Row label="路線數" value={String(props.Stops ?? "")} />
       <Row label="城市" value={String(props.City ?? "")} />
@@ -147,6 +145,7 @@ export function ShipPanel({ props }: { props: Record<string, unknown> }) {
       <Row label="船舶類型" value={info.label} color={info.color} />
       <Row label="AIS 類型碼" value={Number.isFinite(vesselType) ? String(vesselType) : "—"} />
       <Row label="時間" value={time} />
+      <Row label="涵蓋範圍" value="全台" />
       <Row label="經度" value={props.lon != null ? Number(props.lon).toFixed(5) : "—"} />
       <Row label="緯度" value={props.lat != null ? Number(props.lat).toFixed(5) : "—"} />
     </>

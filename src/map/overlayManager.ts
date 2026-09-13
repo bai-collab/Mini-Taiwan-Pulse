@@ -1,4 +1,3 @@
-import type { Map as MapboxMap } from "mapbox-gl";
 import type { Map as MaplibreMap } from "maplibre-gl";
 import type { OverlayConfig, LayerVisibility } from "../types";
 import {
@@ -7,24 +6,19 @@ import {
   paintSnapshotEquals,
   type SerializedPaint,
 } from "./overlayPaintDiff";
-import { PMTILES_SOURCE_TYPE } from "./pmtilesConstants";
+import { pmtilesUrl } from "./pmtilesSourceType";
 import { loadingRegistry } from "../lib/loadingRegistry";
+import { layerDataStatusStore } from "../state/layerDataStatusStore";
 import { LAYER_LABELS } from "../components/sidebar/layerCatalog";
 import { resolvePropertyValueScale } from "../data/propertyValueTypes";
 import { resolveCompanyGridScale } from "../data/businessRegistryTypes";
 
 /**
- * EM-05：本模組同時服務兩個地圖引擎 —— 主站 mapbox-gl、`/embed` MapLibre。
- *
- * 只用到兩者共有的 `addSource` / `addLayer` / `setLayoutProperty` / `setPaintProperty`
- * 等 API，執行期行為完全相同；差異僅在 TypeScript 型別，以及 PMTiles 的 source 規格
- * （Mapbox 走 mapbox-pmtiles 的自訂 source type，MapLibre 走 `pmtiles://` protocol）——
- * 後者由 `OverlayEngineOptions.pmtilesSource` 注入，見 `src/embed/maplibrePmtiles.ts`。
+ * 主站與 `/embed` 都使用 MapLibre，這裡只保留兩者共用的地圖操作介面。
  */
 /*
- * 刻意用「結構介面」而非 `MapboxMap | MaplibreMap` union：兩者的 getSource/addLayer
- * 泛型簽名互不相容（filter/layer spec 型別分家），union 會讓每個呼叫點都 TS2349。
- * 這裡只宣告本模組實際用到的 8 個方法，兩個引擎的 Map 都結構相容 —— 參數型別放寬到
+ * 刻意用結構介面，避免 MapLibre 各版本的泛型簽名讓每個呼叫點都變成 union 錯誤。
+ * 這裡只宣告本模組實際用到的方法，參數型別放寬到
  * any 是這層 adapter 的代價，真正的型別安全由 overlayRegistry 的 OverlayConfig 把關。
  */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -40,30 +34,24 @@ export interface OverlayMap {
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-// 兩個引擎的 Map 必須都滿足上面的結構 —— 任一方改了簽名，這兩行會在編譯期就紅。
-const _mapboxSatisfies: (m: MapboxMap) => OverlayMap = (m) => m;
+// MapLibre Map 必須滿足上面的結構 —— 引擎簽名改變時在此集中暴露。
 const _maplibreSatisfies: (m: MaplibreMap) => OverlayMap = (m) => m;
-void _mapboxSatisfies; void _maplibreSatisfies;
+void _maplibreSatisfies;
 
-/** 引擎差異注入點。不傳則為主站（mapbox-gl）行為。 */
+/** 保留注入點，讓 embed 可沿用同一套 overlay mount 流程。 */
 export interface OverlayEngineOptions {
-  /** 產生 PMTiles source 規格；預設為 mapbox-pmtiles 的自訂 source type */
+  /** 產生 PMTiles source 規格；預設為 MapLibre vector/raster + pmtiles:// */
   pmtilesSource?: (config: OverlayConfig) => Record<string, unknown>;
 }
 
 function defaultPmtilesSource(config: OverlayConfig): Record<string, unknown> {
-  // 呼叫端（MapView）須先 registerPmtilesSourceTypeOnce()
-  // attribution：這個欄位在此**不會**被 mapbox-pmtiles 的 PmTilesSource 讀到——
-  // 它繼承的 mapbox-gl-js VectorTileSource 建構子只 pick ['url','scheme','tileSize',
-  // 'promoteId']，attribution 要等 TileJSON 的 load() 才會 Object.assign 進來，
-  // 而 PmTilesSource 覆寫了 load()（改讀 PMTiles header/metadata），不會走到那條路。
-  // 留著這個欄位純粹讓呼叫端讀得到 config.attribution 的值；真正生效的設定
-  // 在 addOverlay() 裡 addSource 之後手動補 `source.attribution =`（見該處註解）。
+  const isRaster = !config.pmtiles?.sourceLayer;
   return {
-    type: PMTILES_SOURCE_TYPE,
-    url: config.sourceUrl,
+    type: isRaster ? "raster" : "vector",
+    url: pmtilesUrl(config.sourceUrl),
     minzoom: config.pmtiles?.minzoom,
     maxzoom: config.pmtiles?.maxzoom,
+    ...(isRaster ? { tileSize: 512 } : {}),
   };
 }
 
@@ -90,6 +78,23 @@ export function applyLayerOpacity(
     out[key] = typeof value === "number" ? value * opacity : ["*", value, opacity];
   }
   return out;
+}
+
+/**
+ * MapLibre 5 沒有 Mapbox 的 raster-color shader properties。保留 raster tile
+ * 的 opacity/resampling，移除這三個選配欄位，讓熱島／樹冠影像仍能作為普通
+ * 2D raster overlay 顯示，而不會因 addLayer 被 style validator 整層拒收。
+ */
+export function normalizePaintForMapLibre(
+  layerType: OverlayConfig["layers"][number]["type"],
+  paint: Record<string, unknown>,
+): Record<string, unknown> {
+  if (layerType !== "raster") return paint;
+  const normalized = { ...paint };
+  delete normalized["raster-color"];
+  delete normalized["raster-color-mix"];
+  delete normalized["raster-color-range"];
+  return normalized;
 }
 
 /**
@@ -172,18 +177,13 @@ export function addOverlay(
 ) {
   if (!map.getSource(config.sourceId)) {
     if (config.pmtiles) {
-      // PMTiles 向量切片。預設走 mapbox-pmtiles 自訂 source type（呼叫端 MapView 須先
-      // registerPmtilesSourceTypeOnce()）；/embed 注入 pmtiles:// protocol 版本。
+      // PMTiles 走 MapLibre protocol；MapView 建立 source 前已完成一次註冊。
       const source = (opts?.pmtilesSource ?? defaultPmtilesSource)(config);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       map.addSource(config.sourceId, source as any);
       if (config.attribution) {
-        // PmTilesSource 的 attribution 走 source spec 傳不進去（見 defaultPmtilesSource
-        // 註解），只能拿到 addSource 建出來的 instance 直接補 property。
-        // PmTilesSource.load() 非同步抓完 header/metadata 後會 `extend(this, tileJSON)`
-        // 再 fire 一次 sourceDataType:"metadata" 事件（AttributionControl 靠這個事件
-        // 重算顯示），若 PMTiles 檔本身 metadata 沒有 attribution 鍵，這裡設的值不會被
-        // 蓋掉；用 "data" listener 保底重新賦值，避免時序或未來套件版本差異讓標示消失。
+        // PMTiles metadata 未帶 attribution 時，直接在 source instance 補上，
+        // 讓 AttributionControl 仍能顯示 registry 的來源說明。
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const src = map.getSource(config.sourceId) as any;
         if (src) {
@@ -219,7 +219,7 @@ export function addOverlay(
     const id = layerId(config, spec.suffix);
     if (map.getLayer(id)) continue;
 
-    const paint = applyLayerOpacity(config, spec.paint(isDark, params), params);
+    const paint = normalizePaintForMapLibre(spec.type, applyLayerOpacity(config, spec.paint(isDark, params), params));
     const filter = resolveFilter(spec, params);
     map.addLayer({
       id,
@@ -234,8 +234,8 @@ export function addOverlay(
       ...(spec.maxzoom != null ? { maxzoom: spec.maxzoom } : {}),
       ...(filter ? { filter } : config.filter ? { filter: config.filter } : {}),
       paint: paint as Record<string, unknown>,
-    } as mapboxgl.AnyLayer);
-    // __filter 併入快照僅供 rebuild 變更偵測比對用，不會送進 mapbox（見下方 updateOverlayTheme）
+    } as any);
+    // __filter 併入快照僅供 rebuild 變更偵測比對用，不會送進 MapLibre。
     cache.set(id, snapshotPaint({ ...paint, ...(filter ? { __filter: filter } : {}) }));
   }
 }
@@ -262,7 +262,7 @@ export function updateOverlayTheme(
       const id = layerId(config, spec.suffix);
       // 把 paint + (callback) layout + (函式) filter 一起 snapshot；三者任一變化都需 trigger rebuild
       // （filter 併入 __filter 合成 key 僅供比對，不是真的 mapbox paint property）
-      const paintObj = applyLayerOpacity(config, spec.paint(isDark, params), params);
+      const paintObj = normalizePaintForMapLibre(spec.type, applyLayerOpacity(config, spec.paint(isDark, params), params));
       const layoutObj = typeof spec.layout === "function" ? spec.layout(isDark, params) : (spec.layout ?? {});
       const filterObj = resolveFilter(spec, params);
       const snapshot = snapshotPaint({ ...paintObj, ...layoutObj, ...(filterObj ? { __filter: filterObj } : {}) });
@@ -286,7 +286,7 @@ export function updateOverlayTheme(
         if (!config.rebuildOnParamChange.includes(spec.suffix)) continue;
         const id = layerId(config, spec.suffix);
         if (map.getLayer(id)) continue;
-        const paint = applyLayerOpacity(config, spec.paint(isDark, params), params);
+        const paint = normalizePaintForMapLibre(spec.type, applyLayerOpacity(config, spec.paint(isDark, params), params));
         const layoutObj = typeof spec.layout === "function" ? spec.layout(isDark, params) : spec.layout;
         const filter = resolveFilter(spec, params);
         map.addLayer({
@@ -299,7 +299,7 @@ export function updateOverlayTheme(
           ...(spec.maxzoom != null ? { maxzoom: spec.maxzoom } : {}),
           ...(filter ? { filter } : config.filter ? { filter: config.filter } : {}),
           paint: paint as Record<string, unknown>,
-        } as mapboxgl.AnyLayer);
+        } as any);
         cache.set(id, nextSnapshots.get(id) ?? snapshotPaint(paint));
       }
       // 還原 visibility 狀態
@@ -314,7 +314,7 @@ export function updateOverlayTheme(
     // 非 rebuild layers 仍走 diff 式 setPaintProperty
     for (const spec of config.layers) {
       if (config.rebuildOnParamChange.includes(spec.suffix)) continue;
-      applyPaintDiff(map, cache, layerId(config, spec.suffix), applyLayerOpacity(config, spec.paint(isDark, params), params));
+      applyPaintDiff(map, cache, layerId(config, spec.suffix), normalizePaintForMapLibre(spec.type, applyLayerOpacity(config, spec.paint(isDark, params), params)));
       if (typeof spec.layout === "function") {
         const layout = spec.layout(isDark, params);
         applyLayoutDiff(map, layerId(config, spec.suffix), overlayVisible ? layout : { ...layout, visibility: "none" });
@@ -325,7 +325,7 @@ export function updateOverlayTheme(
 
   // 一般 layers: diff 式 setPaintProperty + callback layout 也 diff 更新
   for (const spec of config.layers) {
-    applyPaintDiff(map, cache, layerId(config, spec.suffix), applyLayerOpacity(config, spec.paint(isDark, params), params));
+    applyPaintDiff(map, cache, layerId(config, spec.suffix), normalizePaintForMapLibre(spec.type, applyLayerOpacity(config, spec.paint(isDark, params), params)));
     if (typeof spec.layout === "function") {
       const layout = spec.layout(isDark, params);
       applyLayoutDiff(map, layerId(config, spec.suffix), overlayVisible ? layout : { ...layout, visibility: "none" });
@@ -489,8 +489,12 @@ export async function hydrateOverlayIfNeeded(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (src as any).setData(json);
     }
+    // 逐層資料狀態：載到但 0 筆 → empty；有 feature → ready。
+    layerDataStatusStore.set(config.id, (json.features?.length ?? 0) > 0 ? "ready" : "empty");
   } catch (e) {
     hydratedSources.delete(config.sourceId);
+    // fetch 失敗 / 404（多為本機缺該 geojson 資產）→ 標載入失敗，讓側欄徽章說清楚原因。
+    layerDataStatusStore.set(config.id, "error");
     console.warn(`[overlay] hydrate ${config.sourceId} failed:`, e);
   } finally {
     loadingRegistry.end(taskId);
@@ -510,7 +514,16 @@ export function setOverlayVisible(
   visible: boolean,
   isDark = false,
   params?: Record<string, number>,
+  opts?: OverlayEngineOptions,
 ) {
+  // Lazy：轉為可見時，若 source/layer 尚未建立就先建（預設不載、使用者點開才載）。
+  // 這讓啟動時不會為隱藏層建立 PMTiles source（避免缺資產 404 讓地圖永不 idle）。
+  if (visible) {
+    const firstId = layerId(config, config.layers[0]?.suffix ?? "");
+    if (!map.getLayer(firstId)) {
+      addOverlay(map, config, isDark, params, opts);
+    }
+  }
   for (const spec of config.layers) {
     const id = layerId(config, spec.suffix);
     if (map.getLayer(id)) {
@@ -534,10 +547,9 @@ export function addAllOverlays(
   opts?: OverlayEngineOptions,
 ) {
   for (const config of registry) {
+    // Lazy：只建立目前可見的 overlay；隱藏層等使用者點開，再由 setOverlayVisible 建立。
+    if (!isOverlayVisible(config, visibility, params)) continue;
     addOverlay(map, config, isDark, params, opts);
-    if (!isOverlayVisible(config, visibility, params)) {
-      setOverlayVisible(map, config, false, isDark, params);
-    }
   }
 }
 

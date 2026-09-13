@@ -237,6 +237,7 @@ export function ActiveFaultPanel({ props }: { props: Record<string, unknown> }) 
         </div>
       </div>
       <Row label="編號" value={String(props.fault_id ?? "")} />
+      <Row label="涵蓋範圍" value="全台" />
       <Row label="全稱" value={String(props.name ?? "")} />
     </>
   );

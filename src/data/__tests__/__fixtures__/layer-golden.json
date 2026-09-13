@@ -5303,7 +5303,7 @@
         "circle"
       ],
       "sourceId": "weather-stations",
-      "sourceUrl": "./geo/weather_stations.geojson"
+      "sourceUrl": "./geo/chiayi_weather_stations_cwa.geojson"
     },
     {
       "dynamicData": null,
@@ -12389,7 +12389,7 @@
       "pmtiles": null,
       "rebuildOnParamChange": null,
       "sourceId": "water-basins",
-      "sourceUrl": "./geo/water_basins.geojson"
+      "sourceUrl": "./geo/chiayi_basins_wra.geojson"
     },
     {
       "dynamicData": null,
@@ -12454,14 +12454,10 @@
           "type": "line"
         }
       ],
-      "pmtiles": {
-        "maxzoom": 13,
-        "minzoom": 4,
-        "sourceLayer": "river_polygons"
-      },
+      "pmtiles": null,
       "rebuildOnParamChange": null,
       "sourceId": "water-river-polygons",
-      "sourceUrl": "./geo/water_river_polygons.pmtiles"
+      "sourceUrl": "./geo/osm_chiayi_river_polygons.geojson"
     },
     {
       "dynamicData": null,
@@ -12530,14 +12526,10 @@
           "type": "line"
         }
       ],
-      "pmtiles": {
-        "maxzoom": 13,
-        "minzoom": 4,
-        "sourceLayer": "rivers"
-      },
+      "pmtiles": null,
       "rebuildOnParamChange": null,
       "sourceId": "water-rivers",
-      "sourceUrl": "./geo/water_rivers.pmtiles"
+      "sourceUrl": "./geo/osm_chiayi_rivers.geojson"
     },
     {
       "dynamicData": null,
@@ -12657,14 +12649,10 @@
           "type": "line"
         }
       ],
-      "pmtiles": {
-        "maxzoom": 13,
-        "minzoom": 5,
-        "sourceLayer": "levees"
-      },
+      "pmtiles": null,
       "rebuildOnParamChange": null,
       "sourceId": "water-levees",
-      "sourceUrl": "./geo/water_levees.pmtiles"
+      "sourceUrl": "./geo/osm_chiayi_levees_wra.geojson"
     },
     {
       "dynamicData": null,
@@ -12756,14 +12744,10 @@
           "type": "line"
         }
       ],
-      "pmtiles": {
-        "maxzoom": 13,
-        "minzoom": 5,
-        "sourceLayer": "canals"
-      },
+      "pmtiles": null,
       "rebuildOnParamChange": null,
       "sourceId": "water-canals",
-      "sourceUrl": "./geo/water_canals.pmtiles"
+      "sourceUrl": "./geo/chiayi_canals_osm.geojson"
     },
     {
       "dynamicData": null,
@@ -12918,7 +12902,7 @@
       "pmtiles": null,
       "rebuildOnParamChange": null,
       "sourceId": "water-protection-zones",
-      "sourceUrl": "./geo/water_protection_zones.geojson"
+      "sourceUrl": "./geo/chiayi_protection_zones_wra.geojson"
     },
     {
       "dynamicData": null,
@@ -12983,14 +12967,10 @@
           "type": "line"
         }
       ],
-      "pmtiles": {
-        "maxzoom": 13,
-        "minzoom": 5,
-        "sourceLayer": "reservoirs"
-      },
+      "pmtiles": null,
       "rebuildOnParamChange": null,
       "sourceId": "water-reservoir-poly",
-      "sourceUrl": "./geo/water_reservoirs.pmtiles"
+      "sourceUrl": "./geo/chiayi_reservoirs_wra.geojson"
     },
     {
       "dynamicData": null,
@@ -13180,7 +13160,7 @@
       "pmtiles": null,
       "rebuildOnParamChange": null,
       "sourceId": "water-reservoir-dams",
-      "sourceUrl": "./geo/water_dams.geojson"
+      "sourceUrl": "./geo/chiayi_dams_wra.geojson"
     },
     {
       "dynamicData": null,
@@ -13291,7 +13271,7 @@
       "pmtiles": null,
       "rebuildOnParamChange": null,
       "sourceId": "water-detention-basins",
-      "sourceUrl": "./geo/water_detention_basins.geojson"
+      "sourceUrl": "./geo/chiayi_detention_basins_osm.geojson"
     },
     {
       "dynamicData": null,
@@ -13570,14 +13550,10 @@
           "type": "line"
         }
       ],
-      "pmtiles": {
-        "maxzoom": 13,
-        "minzoom": 5,
-        "sourceLayer": "flood_extreme"
-      },
+      "pmtiles": null,
       "rebuildOnParamChange": null,
       "sourceId": "water-flood-extreme",
-      "sourceUrl": "./geo/water_flood_extreme.pmtiles"
+      "sourceUrl": "./geo/chiayi_flood_650mm_24hr_wra.geojson"
     },
     {
       "dynamicData": null,
@@ -13791,16 +13767,12 @@
           "type": "line"
         }
       ],
-      "pmtiles": {
-        "maxzoom": 14,
-        "minzoom": 5,
-        "sourceLayer": "lakes_ponds_osm"
-      },
+      "pmtiles": null,
       "rebuildOnParamChange": [
         "lakesPondsOsmOpacity"
       ],
       "sourceId": "lakes-ponds-osm",
-      "sourceUrl": "./water_resources/lakes_ponds_osm.pmtiles"
+      "sourceUrl": "./geo/osm_chiayi_lakes_ponds.geojson"
     },
     {
       "dynamicData": null,
@@ -34599,16 +34571,12 @@
           "type": "line"
         }
       ],
-      "pmtiles": {
-        "maxzoom": 14,
-        "minzoom": 8,
-        "sourceLayer": "contour_25k"
-      },
+      "pmtiles": null,
       "rebuildOnParamChange": [
         "line"
       ],
       "sourceId": "base-contour-25k",
-      "sourceUrl": "./base_map/contour_25k.pmtiles"
+      "sourceUrl": "./geo/chiayi_contour_25k.geojson"
     },
     {
       "dynamicData": null,
@@ -34720,16 +34688,12 @@
           "type": "line"
         }
       ],
-      "pmtiles": {
-        "maxzoom": 14,
-        "minzoom": 7,
-        "sourceLayer": "contour_dtm20"
-      },
+      "pmtiles": null,
       "rebuildOnParamChange": [
         "line"
       ],
       "sourceId": "base-contour-dtm20",
-      "sourceUrl": "./base_map/contour_dtm20.pmtiles"
+      "sourceUrl": "./geo/chiayi_contour_dtm20.geojson"
     },
     {
       "dynamicData": null,

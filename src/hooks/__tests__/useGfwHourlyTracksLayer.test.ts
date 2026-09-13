@@ -1,8 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import type { RefObject } from "react";
-// @ts-expect-error — style-spec 的 CJS 入口無型別宣告（mapbox-gl 未導出），僅測試用
-import { validate } from "mapbox-gl/dist/style-spec/index.cjs";
+import { validateStyleMin } from "@maplibre/maplibre-gl-style-spec";
 
 const harness = vi.hoisted(() => {
   const refs: { current: unknown }[] = [];
@@ -190,13 +189,13 @@ describe("useGfwHourlyTracksLayer timeline", () => {
     await Promise.resolve();
 
     const endpointLayer = state.layers.get("gfw-hourly-tracks-endpoint");
-    const errors = (validate({
+    const errors = validateStyleMin({
       version: 8,
       sources: {
         "gfw-hourly-tracks-endpoint-source": { type: "geojson", data: EMPTY },
       },
       layers: [endpointLayer],
-    }) as { message: string }[]).map((error) => error.message);
+    } as never).map((error) => error.message);
     expect(errors).toEqual([]);
   });
 

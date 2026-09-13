@@ -43,13 +43,13 @@ describe("statisticsDisplayModeStore", () => {
     expect(statisticsDisplayModeStore.getSnapshot()).toEqual({ mode: "single", lastEnabledKey: null, recentEnabledKeys: [] });
   });
 
-  it("單一模式 A → B 只保留 B，且不影響一般圖層", () => {
+  it("統計層雖仍保留 admission 狀態，但產品白名單不允許實際顯示", () => {
     layerVisibilityStore.setVisibility("flights", true);
     apply(statisticsDisplayModeStore.enable(A!, layerVisibilityStore.getAll()));
     apply(statisticsDisplayModeStore.enable(B!, layerVisibilityStore.getAll()));
 
     expect(layerVisibilityStore.getVisibility(A!)).toBe(false);
-    expect(layerVisibilityStore.getVisibility(B!)).toBe(true);
+    expect(layerVisibilityStore.getVisibility(B!)).toBe(false);
     expect(layerVisibilityStore.getVisibility("flights")).toBe(true);
   });
 
@@ -58,8 +58,8 @@ describe("statisticsDisplayModeStore", () => {
     apply(statisticsDisplayModeStore.enable(A!, layerVisibilityStore.getAll()));
     apply(statisticsDisplayModeStore.enable(B!, layerVisibilityStore.getAll()));
 
-    expect(layerVisibilityStore.getVisibility(A!)).toBe(true);
-    expect(layerVisibilityStore.getVisibility(B!)).toBe(true);
+    expect(layerVisibilityStore.getVisibility(A!)).toBe(false);
+    expect(layerVisibilityStore.getVisibility(B!)).toBe(false);
   });
 
   it("從重疊切回單一時保留最近啟用的統計層", () => {
@@ -69,7 +69,7 @@ describe("statisticsDisplayModeStore", () => {
     apply(statisticsDisplayModeStore.setMode("single", layerVisibilityStore.getAll()));
 
     expect(layerVisibilityStore.getVisibility(A!)).toBe(false);
-    expect(layerVisibilityStore.getVisibility(B!)).toBe(true);
+    expect(layerVisibilityStore.getVisibility(B!)).toBe(false);
     expect(statisticsDisplayModeStore.getSnapshot().mode).toBe("single");
   });
 
@@ -79,7 +79,7 @@ describe("statisticsDisplayModeStore", () => {
     apply(statisticsDisplayModeStore.setMode("single", layerVisibilityStore.getAll()));
 
     expect(layerVisibilityStore.getVisibility(A!)).toBe(false);
-    expect(layerVisibilityStore.getVisibility(B!)).toBe(true);
+    expect(layerVisibilityStore.getVisibility(B!)).toBe(false);
   });
 
   it("將模式與最近啟用圖層持久化", () => {
@@ -99,7 +99,7 @@ describe("statisticsDisplayModeStore", () => {
     apply(statisticsDisplayModeStore.setVisible(C!, false, layerVisibilityStore.getAll()));
     apply(statisticsDisplayModeStore.setMode("single", layerVisibilityStore.getAll()));
 
-    expect(layerVisibilityStore.getVisibility(B!)).toBe(true);
+    expect(layerVisibilityStore.getVisibility(B!)).toBe(false);
     expect(layerVisibilityStore.getVisibility(A!)).toBe(false);
     expect(layerVisibilityStore.getVisibility(C!)).toBe(false);
   });
@@ -110,7 +110,7 @@ describe("statisticsDisplayModeStore", () => {
     apply(statisticsDisplayModeStore.enable("crimeAreaMonthly", layerVisibilityStore.getAll()));
 
     expect(layerVisibilityStore.getVisibility(A!)).toBe(false);
-    expect(layerVisibilityStore.getVisibility("crimeAreaMonthly")).toBe(true);
+    expect(layerVisibilityStore.getVisibility("crimeAreaMonthly")).toBe(false);
     expect(layerVisibilityStore.getVisibility("countyBoundary")).toBe(true);
   });
 
@@ -118,12 +118,12 @@ describe("statisticsDisplayModeStore", () => {
     apply(statisticsDisplayModeStore.enable(A!, layerVisibilityStore.getAll()));
     apply(statisticsDisplayModeStore.enable("statsMaritimeSubsidyCounty", layerVisibilityStore.getAll()));
     expect(layerVisibilityStore.getVisibility(A!)).toBe(false);
-    expect(layerVisibilityStore.getVisibility("statsMaritimeSubsidyCounty")).toBe(true);
+    expect(layerVisibilityStore.getVisibility("statsMaritimeSubsidyCounty")).toBe(false);
 
     apply(statisticsDisplayModeStore.setMode("overlap", layerVisibilityStore.getAll()));
     apply(statisticsDisplayModeStore.enable(A!, layerVisibilityStore.getAll()));
-    expect(layerVisibilityStore.getVisibility(A!)).toBe(true);
-    expect(layerVisibilityStore.getVisibility("statsMaritimeSubsidyCounty")).toBe(true);
+    expect(layerVisibilityStore.getVisibility(A!)).toBe(false);
+    expect(layerVisibilityStore.getVisibility("statsMaritimeSubsidyCounty")).toBe(false);
   });
 
   it("raw restore 在單一模式也會經 admission gate 收斂", () => {

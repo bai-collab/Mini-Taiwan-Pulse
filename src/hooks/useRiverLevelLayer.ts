@@ -1,8 +1,8 @@
 import type {
   Map as MapboxMap,
-  CircleLayer,
+  CircleLayerSpecification,
   ExpressionSpecification,
-} from "mapbox-gl";
+} from "maplibre-gl";
 import {
   fetchRiverLevelDay,
   type RiverLevelDayRow,
@@ -98,7 +98,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-blur": 0.9,
         "circle-opacity": (isDark ? 0.45 : 0.35) * opacity,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
   if (!map.getLayer(LAYER_CIRCLE)) {
     map.addLayer({
@@ -113,7 +113,7 @@ function ensureLayers(map: MapboxMap, isDark: boolean, scale: number, opacity: n
         "circle-stroke-color": "#ffffff",
         "circle-stroke-opacity": 0.5 * opacity,
       },
-    } as CircleLayer);
+    } as CircleLayerSpecification);
   }
 }
 

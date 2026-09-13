@@ -1,7 +1,7 @@
 import { useCoralPrivateAccess } from "./hooks/useCoralPrivateAccess";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { COLORS, FONT_DATA, RADIUS, FONT_SIZE } from "./styles/designTokens";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import type { ViewMode, RenderMode, DisplayMode, Flight, ExpandableLayerKey, LayerVisibility, AppMode, FeatureInfo } from "./types";
 import type { StationPillarData } from "./three/StationPillarScene";
 import { MapView } from "./map/MapView";
@@ -85,6 +85,7 @@ import { UserAvatar } from "./components/auth/UserAvatar";
 import { AdminPanel } from "./components/admin/AdminPanel";
 import { useMemberGate, signInWithGoogle } from "./lib/auth";
 import { GATED_LAYERS } from "./components/sidebar/layerCatalog";
+import { trimmedPulseLayerAllowlist, trimmedPulseUi } from "./config/trimmedPulseConfig";
 import { useLayerGates, loadLayerGates, isLayerLocked } from "./lib/layerGates";
 import { FeatureInfoPanel } from "./components/FeatureInfoPanel";
 import { HEADER_LABELS } from "./components/featureInfo/registry";
@@ -106,6 +107,7 @@ import type { SavedPlace } from "./data/memberLibraryLoader";
 import { LayerHosts } from "./layers/LayerHost";
 import { bumpHostRender, type LayerHostDeps } from "./layers/layerHostDeps";
 import { coralSafeFeatureInfo, isCoralPrivateFeature } from "./lib/coralPrivateUi";
+import { ChiayiStudentApp } from "./chiayiStudent/ChiayiStudentApp";
 
 // setStyle 進行中時 getStyle() 會 throw "Style is not done loading"
 // → 換底圖期間的 re-render 不能再裸呼 map.getStyle()
@@ -118,7 +120,7 @@ function styleReady(map: MapboxMap | null): map is MapboxMap {
   }
 }
 
-export default function App() {
+export function FullPulseApp() {
   // dev-only render 計數（`window.__layerRenderCounts`）——
   // 第 4 階段（App 端解除全店訂閱）要證明「拖一個 slider 只有那一個 Host 重跑」。
   // 現況 App 與所有 Host 是同步跳動的，那就是要被打破的基準線。
@@ -1296,6 +1298,13 @@ export default function App() {
     wasteTrucks: wasteCount,
   }), [displayedFlights.length, ships.length, trainCount, busCount, busIntercityCount, wasteCount]);
 
+  // 逐層狀態徽章用：目前有可靠 loading 訊號的層（其餘層由 count===0 判無資料）。
+  const sidebarLoading = useMemo(() => ({
+    flights: flightsDayLoading,
+    ships: shipsDayLoading || shipsLoading,
+    rail: railScheduleLoading || railLoading,
+  }), [flightsDayLoading, shipsDayLoading, shipsLoading, railScheduleLoading, railLoading]);
+
   // owner-only 圖層：非 owner 的開啟意圖一律攔截（回 true = 呼叫端直接 return no-op）。
   // 未登入 → 導 Google 登入；已登入非 owner → 顯示「私人圖層」提示。
   const handleGatedIntercept = useCallback((layer: keyof LayerVisibility): boolean => {
@@ -1368,9 +1377,12 @@ export default function App() {
   const handleBulkSetVisibility = useCallback(
     (keys: (keyof LayerVisibility)[], value: boolean) => {
       // 開啟時（value=true）過濾掉對此使用者上鎖的 key（Theme 全開 / chat bridge 亦走此路徑）
-      const effectiveKeys = value
-        ? keys.filter((k) => !lockedKeysRef.current.has(k))
+      const productKeys = value
+        ? keys.filter((k) => trimmedPulseLayerAllowlist.has(k))
         : keys;
+      const effectiveKeys = value
+        ? productKeys.filter((k) => !lockedKeysRef.current.has(k))
+        : productKeys;
       const statisticsKeys = effectiveKeys.filter(isStatisticsChoropleth);
       const ordinaryKeys = effectiveKeys.filter((key) => !isStatisticsChoropleth(key));
       setLayerVisibility((prev) => {
@@ -1420,13 +1432,14 @@ export default function App() {
     if (urlStateAppliedRef.current) return;
     urlStateAppliedRef.current = true;
     const { layers, date, hour, statisticsMode: urlStatisticsMode } = urlStateRef.current;
+    const allowedLayers = layers?.filter((key) => trimmedPulseLayerAllowlist.has(key));
     // URL 明示模式優先於 localStorage；舊連結若列出統計面卻沒有 sm，安全地以單一
     // 模式收斂（layers 原始順序的最後一個統計面保留），避免舊多色階重疊難以閱讀。
-    const hydratedStatisticsMode = resolveStatisticsModeForUrl(urlStatisticsMode, layers?.some(isStatisticsChoropleth) ?? false);
+    const hydratedStatisticsMode = resolveStatisticsModeForUrl(urlStatisticsMode, allowedLayers?.some(isStatisticsChoropleth) ?? false);
     if (hydratedStatisticsMode) {
       setLayerVisibility((prev) => statisticsDisplayModeStore.setMode(hydratedStatisticsMode, prev));
     }
-    if (layers?.length) handleBulkSetVisibility(layers, true);
+    if (allowedLayers?.length) handleBulkSetVisibility(allowedLayers, true);
     if (date) {
       // 先切換 timeline 的日期視窗，再寫 hh:00。若直接呼叫舊視窗的 seek，
       // deep link 會被今天的 window clamp 回去，網址日期看似有效但資料層永遠空白。
@@ -1528,7 +1541,7 @@ export default function App() {
       // chat tool 寫入後同一個 call stack 就會讀回；不能用 render-lagged ref，否則
       // tool 結果會把已被 single-mode 替換的統計面報成仍可見。
       Object.entries(layerVisibilityStore.getAll())
-        .filter(([, v]) => v)
+        .filter(([k, v]) => v && trimmedPulseLayerAllowlist.has(k as keyof LayerVisibility))
         .map(([k]) => k),
     getCurrentTimeISO: () => new Date(timeStore.getTime() * 1000).toISOString(),
     getCamera: () => {
@@ -1858,6 +1871,7 @@ export default function App() {
               viewMode={viewMode}
               displayMode={displayMode}
               counts={sidebarCounts}
+              loading={sidebarLoading}
               onLayerClick={handleLayerClick}
               onToggleVisibility={handleToggleVisibility}
               onViewModeChange={setViewMode}
@@ -1934,19 +1948,19 @@ export default function App() {
           </div>
 
           {/* 衛星情報 Satellite Console */}
-          <SatelliteConsole
+          {trimmedPulseUi.showSatellite && <SatelliteConsole
             open={satConsole.open}
             onClose={() => satelliteConsoleStore.setOpen(false)}
             layerVisibility={layerVisibility}
             setLayerVisibility={(next) => setLayerVisibility({ ...layerVisibility, ...next })}
             onFlyTo={(lon, lat) => mapRef.current?.flyTo({ center: [lon, lat], zoom: 3.5, speed: 1.4, pitch: 0 })}
-          />
+          />}
 
           {/* 🏢 房地產總市值 Property Value（縣市長條圖） */}
-          <PropertyValuePanel
+          {trimmedPulseUi.showPropertyValue && <PropertyValuePanel
             open={propertyValueOpen}
             onClose={() => setPropertyValueOpen(false)}
-          />
+          />}
 
           {/* 🌋 地震回放 Earthquake Replay（事件清單 + 播放控制） */}
           <EarthquakeReplayPanel
@@ -1967,16 +1981,16 @@ export default function App() {
           />
 
           {/* 即時情報 Intel Panel */}
-          <IntelPanel
+          {trimmedPulseUi.showIntel && <IntelPanel
             open={intelOpen}
             onClose={() => setIntelOpen(false)}
             onSelectLocation={(lon, lat, zoom) => {
               mapRef.current?.flyTo({ center: [lon, lat], zoom: zoom ?? 12, speed: 1.2 });
             }}
-          />
+          />}
 
           {/* Monitor Mode 戰情看板（底部上拉） */}
-          <MonitorPanel
+          {trimmedPulseUi.showMonitor && <MonitorPanel
             privateDataScope={isOwner && !memberAuthLoading ? memberUser?.id ?? null : null}
             open={monitorOpen}
             onClose={() => setMonitorOpen(false)}
@@ -1985,7 +1999,7 @@ export default function App() {
             onSelectLocation={(lon, lat) => {
               mapRef.current?.flyTo({ center: [lon, lat], zoom: 11, speed: 1.2 });
             }}
-          />
+          />}
 
 
           {/* 時間軸：依 mode 切換 realtime / historical */}
@@ -2097,7 +2111,7 @@ export default function App() {
             >
               Capture
             </button>
-            <button
+            {trimmedPulseUi.showMonitor && <button
               onClick={() => {
                 if (!monitorOpen) {
                   setMemberOpen(false);
@@ -2157,8 +2171,8 @@ export default function App() {
               >
                 BETA
               </span>
-            </button>
-            <button
+            </button>}
+            {trimmedPulseUi.showChat && <button
               onClick={() => setChatOpen((v) => !v)}
               title="AI 助手 BYOK Chat"
               style={{
@@ -2182,7 +2196,7 @@ export default function App() {
             >
               <MessageSquare size={13} />
               AI
-            </button>
+            </button>}
           </div>
 
           {/* 右上角第二排 */}
@@ -2214,7 +2228,9 @@ export default function App() {
             >
               Info
             </button>
-            <UserAvatar isOwner={isOwner} onOpenAdmin={() => setAdminOpen(true)} isDarkTheme={isDarkTheme} />
+            {(trimmedPulseUi.showMember || trimmedPulseUi.showAdmin) && (
+              <UserAvatar isOwner={isOwner} onOpenAdmin={() => setAdminOpen(true)} isDarkTheme={isDarkTheme} />
+            )}
           </div>
 
           {/* 操作提示 */}
@@ -2367,7 +2383,7 @@ export default function App() {
               <Camera size={17} />
             </button>
 
-            <button
+            {trimmedPulseUi.showChat && <button
               onClick={() => { if (!chatOpen) setMemberOpen(false); setChatOpen(!chatOpen); }}
               title="AI 助手"
               style={{
@@ -2384,7 +2400,7 @@ export default function App() {
               }}
             >
               <MessageSquare size={16} />
-            </button>
+            </button>}
 
             <button
               onClick={() => setRenderMode((m) => (m === "3d" ? "2d" : "3d"))}
@@ -2408,8 +2424,8 @@ export default function App() {
               {renderMode === "3d" ? "3D" : "2D"}
             </button>
 
-            <button aria-label="會員專區" title="會員專區" onClick={handleMemberToggle} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid #577184", background: memberOpen ? "#285563" : "rgba(0,0,0,.45)", color: "white", display: "grid", placeItems: "center" }}><UserRound size={17} /></button>
-            <UserAvatar compact isOwner={isOwner} onOpenAdmin={() => setAdminOpen(true)} />
+            {trimmedPulseUi.showMember && <button aria-label="會員專區" title="會員專區" onClick={handleMemberToggle} style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid #577184", background: memberOpen ? "#285563" : "rgba(0,0,0,.45)", color: "white", display: "grid", placeItems: "center" }}><UserRound size={17} /></button>}
+            {(trimmedPulseUi.showMember || trimmedPulseUi.showAdmin) && <UserAvatar compact isOwner={isOwner} onOpenAdmin={() => setAdminOpen(true)} />}
           </div>
 
           {/* Timeline */}
@@ -2479,8 +2495,8 @@ export default function App() {
                   <div style={{ marginTop: 12 }}>
                     <LayerSidebar
                       visibility={layerVisibility}
-                      onMemberToggle={handleMemberToggle}
-                      memberActive={memberOpen}
+                      onMemberToggle={trimmedPulseUi.showMember ? handleMemberToggle : undefined}
+                      memberActive={trimmedPulseUi.showMember && memberOpen}
                       favoriteKeys={favoriteKeys}
                       onToggleFavorite={handleToggleFavorite}
                       lockedKeys={lockedKeys}
@@ -2572,6 +2588,9 @@ export default function App() {
             {tooltipInfo.flight.origin_iata} → {tooltipInfo.flight.dest_iata}
           </div>
           <div style={{ fontSize: FONT_SIZE.base, color: COLORS.textMuted, marginTop: 2 }}>
+            涵蓋範圍：全台
+          </div>
+          <div style={{ fontSize: FONT_SIZE.base, color: COLORS.textMuted, marginTop: 2 }}>
             {tooltipInfo.flight.aircraft_type}
             {tooltipInfo.altitude != null && ` · ${tooltipInfo.altitude}m`}
           </div>
@@ -2636,8 +2655,16 @@ export default function App() {
           <div style={{ fontSize: FONT_SIZE.lg, fontWeight: 700, color: busTooltipInfo.bus.color, letterSpacing: 1 }}>
             {busTooltipInfo.bus.routeName}
           </div>
+          <div style={{ fontSize: FONT_SIZE.base, color: COLORS.textMuted, marginTop: 2 }}>
+            {busTooltipInfo.scope === "city"
+              ? "嘉義市/縣公車"
+              : busTooltipInfo.scope === "intercity"
+                ? "公路客運(全國路線)"
+                : "台灣好行"}
+          </div>
           <div style={{ fontSize: FONT_SIZE.base, color: COLORS.textDefault, marginTop: 4 }}>
-            {busTooltipInfo.bus.plateNumb} · {busTooltipInfo.bus.city}
+            {busTooltipInfo.bus.plateNumb}
+            {busTooltipInfo.scope === "city" && ` · ${busTooltipInfo.bus.city}`}
           </div>
           <div style={{ fontSize: FONT_SIZE.base, color: COLORS.textMuted, marginTop: 2 }}>
             {busTooltipInfo.bus.status === "running" ? "行駛中" : "停靠中"}
@@ -2864,18 +2891,18 @@ export default function App() {
           : "16px"}
       />
 
-      <MemberPanel key={memberUser?.id ?? "guest"} open={memberOpen} onClose={() => setMemberOpen(false)} isDarkTheme={isDarkTheme} isMobile={isMobile}
+      {trimmedPulseUi.showMember && <MemberPanel key={memberUser?.id ?? "guest"} open={memberOpen} onClose={() => setMemberOpen(false)} isDarkTheme={isDarkTheme} isMobile={isMobile}
         userId={memberUser?.id ?? null} displayName={String(memberUser?.user_metadata?.full_name ?? memberUser?.user_metadata?.name ?? "")}
         authLoading={memberAuthLoading} labels={memberLabels} visibleKeys={Object.entries(layerVisibility).filter(([, on]) => on).map(([key]) => key)} lockedKeys={lockedKeys}
         onToggleLayer={(key) => { if (knownMemberKeys.has(key)) handleToggleVisibility(key as keyof LayerVisibility); }}
-        captureScene={captureMemberScene} restoreScene={restoreMemberScene} capturePlace={captureMemberPlace} restorePlace={restoreMemberPlace} />
+        captureScene={captureMemberScene} restoreScene={restoreMemberScene} capturePlace={captureMemberPlace} restorePlace={restoreMemberPlace} />}
 
       {/* ── Info Modal ── */}
       <InfoModal open={showInfo} onClose={() => setShowInfo(false)} isMobile={isMobile} isDarkTheme={isDarkTheme} />
-      {isOwner && <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} selfId={memberUser?.id ?? null} />}
+      {trimmedPulseUi.showAdmin && isOwner && <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} selfId={memberUser?.id ?? null} />}
 
       {/* ── BYOK 對話浮層（桌機右側 / 手機底部上拉，自帶 mobile 版型）── */}
-      <ChatPanel
+      {trimmedPulseUi.showChat && <ChatPanel
         isDarkTheme={isDarkTheme}
         open={chatOpen}
         onClose={() => setChatOpen(false)}
@@ -2883,10 +2910,10 @@ export default function App() {
         runChatTurn={runChatTurn}
         onTestKey={testKey}
         compact={featureInfo !== null}
-      />
+      />}
 
       {/* ── 資料來源總覽（Step 4 SSOT bridge UI，右下浮動按鈕）── */}
-      {!memberOpen && <DataSourceBrowser isDarkTheme={isDarkTheme} lockedKeys={lockedKeys} onActivateLayer={(key) => handleBulkSetVisibility([key], true)} />}
+      {trimmedPulseUi.showDataSourceBrowser && !memberOpen && <DataSourceBrowser isDarkTheme={isDarkTheme} lockedKeys={lockedKeys} onActivateLayer={(key) => handleBulkSetVisibility([key], true)} />}
 
       {/*
         ── 圖層掛載（AR-22 P1）────────────────────────────────────
@@ -2898,4 +2925,13 @@ export default function App() {
       <LayerHosts deps={hostDeps} />
     </div>
   );
+}
+
+/**
+ * 嘉義市固定副本的預設入口：學生版只掛載三個 allowlist 項目與一支天氣 loader。
+ * 維護者可用 `?surface=full` 進入原始完整 Pulse 介面，避免學生首屏啟動未選圖層。
+ */
+export default function App() {
+  const surface = new URLSearchParams(window.location.search).get("surface");
+  return surface === "full" ? <FullPulseApp /> : <ChiayiStudentApp />;
 }

@@ -1,4 +1,4 @@
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 
 export interface GfwV4TrackPickPoint { x: number; y: number; }
 

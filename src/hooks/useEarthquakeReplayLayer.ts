@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Map as MapboxMap } from "mapbox-gl";
+import type { Map as MapboxMap } from "maplibre-gl";
 import { fetchReplayDetail, fetchReplayEvents } from "../data/earthquakeReplayLoader";
 import {
   S_WAVE_KM_S,

@@ -37,6 +37,15 @@ export const ALL_PRESETS: CameraPreset[] = [
   },
   // Cities
   {
+    name: "嘉義",
+    id: "chiayi",
+    category: "city",
+    center: [120.45, 23.48],
+    zoom: 11,
+    pitch: 0,
+    bearing: 0,
+  },
+  {
     name: "台北",
     id: "taipei",
     category: "city",
@@ -284,12 +293,16 @@ export const ALL_PRESETS: CameraPreset[] = [
   },
 ];
 
-// 開站預設鏡位：台北市中心 z12.5（行道樹圖層預設開啟，進站直接落在主場景；
-// 「全台總覽」preset 本身不動，仍可從鏡位選單切換）
+// FullPulseApp 開站預設鏡位：嘉義中心 [120.45, 23.48] z11；
+// 「全台總覽」preset 本身不動，仍可從鏡位選單切換。
 export const DEFAULT_CAMERA: CameraPreset = {
-  ...ALL_PRESETS[0]!,
-  center: [121.5318, 25.0464],
-  zoom: 12.5,
+  name: "嘉義",
+  id: "chiayi",
+  category: "city",
+  center: [120.45, 23.48],
+  zoom: 11,
+  pitch: 0,
+  bearing: 0,
 };
 
 /**
