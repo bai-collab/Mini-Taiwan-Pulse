@@ -1,0 +1,54 @@
+name: Deploy to GitHub Pages
+
+# 嘉義聚焦教學版：用 Vite 建置後部署到 GitHub Pages（取代 legacy Jekyll 建置）。
+# 純靜態站：免key 靜態圖層(河川/等高線/淹水潛勢/水庫…)＋底圖會顯示；
+# 需 Supabase 的動態層在未設 VITE_SUPABASE_* 時空白，屬預期。
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同時只跑一個部署，取消進行中的舊部署
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Build (base = repo 子路徑)
+        env:
+          # 免key 靜態層不需要；有設才啟用 Supabase 動態層（anon key 屬公開設計）
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build -- --base=/Mini-Taiwan-Pulse/
+      - name: SPA fallback + 關閉 Jekyll
+        run: |
+          cp dist/index.html dist/404.html
+          touch dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
