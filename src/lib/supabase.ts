@@ -34,6 +34,15 @@ function createStubClient(): SupabaseClient {
   return {
     from: () => stubBuilder,
     rpc: rejected,
+    // 未設 Supabase env 時的 auth stub：讓 getSession / onAuthStateChange 等呼叫
+    // 安全回傳空登入態，而不是在 supabase.auth undefined 上 crash 整個 app
+    // （否則純靜態部署會一片黑，免key 靜態圖層也看不到）。
+    auth: {
+      getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+      signInWithOAuth: () => Promise.resolve({ data: null, error: err }),
+      signOut: () => Promise.resolve({ error: null }),
+    },
   } as unknown as SupabaseClient;
 }
 
